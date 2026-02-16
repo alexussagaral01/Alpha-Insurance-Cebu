@@ -116,13 +116,15 @@ const ViewModal = ({ selectedUser, onClose, premiumModalBackdrop, premiumModal, 
             margin-top: 8px;
           }
           .grand-total {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: bold;
-            color: #15803d;
-            padding: 5px;
-            background-color: #f0fdf4;
-            border: 1px solid #22c55e;
-            text-align: right;
+            color: white;
+            background: linear-gradient(135deg, #1e6b47 0%, #15803d 100%);
+            padding: 8px 10px;
+            border: 2px solid #15803d;
+            text-align: center;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
           }
           @media print {
             body {
@@ -167,26 +169,26 @@ const ViewModal = ({ selectedUser, onClose, premiumModalBackdrop, premiumModal, 
             <div class="section-title">POLICY INFORMATION</div>
             <div class="four-column">
               <div class="field">
+                <div class="field-label">Type</div>
+                <div class="field-value">${selectedUser.cType || "N/A"}</div>
+              </div>
+              <div class="field">
                 <div class="field-label">Policy No.</div>
                 <div class="field-value">${selectedUser.policyNumber || selectedUser.pn || "N/A"}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Year</div>
+                <div class="field-value">${selectedUser.year || "N/A"}</div>
               </div>
               <div class="field">
                 <div class="field-label">COC No.</div>
                 <div class="field-value">${selectedUser.cocNumber || selectedUser.coc || "N/A"}</div>
               </div>
-              <div class="field">
-                <div class="field-label">OR No.</div>
-                <div class="field-value">${selectedUser.orNumber || selectedUser.or || "N/A"}</div>
-              </div>
-              <div class="field">
-                <div class="field-label">Type</div>
-                <div class="field-value">${selectedUser.cType || "N/A"}</div>
-              </div>
             </div>
             <div class="content-grid" style="margin-top: 4px;">
               <div class="field">
-                <div class="field-label">Year</div>
-                <div class="field-value">${selectedUser.year || "N/A"}</div>
+                <div class="field-label">OR No.</div>
+                <div class="field-value">${selectedUser.orNumber || selectedUser.or || "N/A"}</div>
               </div>
             </div>
           </div>
@@ -299,8 +301,7 @@ const ViewModal = ({ selectedUser, onClose, premiumModalBackdrop, premiumModal, 
           <!-- Total Amount -->
           <div class="section">
             <div class="section-title">TOTAL AMOUNT</div>
-            <div class="grand-total-row">
-              <div></div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px;">
               <div class="grand-total">GRAND TOTAL: ${selectedUser.grandTotal || "₱0"}</div>
             </div>
           </div>

@@ -156,13 +156,12 @@ router.post('/', async (req, res) => {
   }
 });
 
-// READ - Get all policies (excluding soft-deleted)
+// READ - Get all policies
 router.get('/', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('insurance_policies')
       .select('id, assured, address, coc_number, or_number, policy_number, policy_type, policy_year, date_issued, date_received, insurance_from_date, insurance_to_date, model, make, body_type, color, mv_file_no, plate_no, chassis_no, motor_no, premium, other_charges, auth_fee, doc_stamps, e_vat, lgt, total_premium, created_at, updated_at')
-      .is('deleted_at', null)
       .order('id', { ascending: false });
 
     if (error) throw error;
@@ -188,7 +187,6 @@ router.get('/:id', async (req, res) => {
       .from('insurance_policies')
       .select('id, assured, address, coc_number, or_number, policy_number, policy_type, policy_year, date_issued, date_received, insurance_from_date, insurance_to_date, model, make, body_type, color, mv_file_no, plate_no, chassis_no, motor_no, premium, other_charges, auth_fee, doc_stamps, e_vat, lgt, total_premium, created_at, updated_at')
       .eq('id', req.params.id)
-      .is('deleted_at', null)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -291,7 +289,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE - Soft delete policy
+// DELETE - Permanently delete policy from database
 router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;
@@ -303,25 +301,16 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('insurance_policies')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id)
-      .is('deleted_at', null)
-      .select();
+      .delete()
+      .eq('id', id);
 
     if (error) throw error;
 
-    if (!data || data.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Policy not found or already deleted'
-      });
-    }
-
     res.json({
       success: true,
-      message: 'Policy deleted successfully'
+      message: 'Policy permanently deleted from database'
     });
   } catch (error) {
     console.error('Error deleting policy:', error);
@@ -333,20 +322,14 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// READ - Get deleted policies
+// [DEPRECATED] - Get deleted policies (no longer used with hard delete)
+// Kept for reference but no records will be returned
 router.get('/deleted/list', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('insurance_policies')
-      .select('id, assured, address, coc_number, or_number, policy_number, policy_type, policy_year, date_issued, date_received, insurance_from_date, insurance_to_date, model, make, body_type, color, mv_file_no, plate_no, chassis_no, motor_no, premium, other_charges, auth_fee, doc_stamps, e_vat, lgt, total_premium, created_at, updated_at')
-      .not('deleted_at', 'is', null)
-      .order('deleted_at', { ascending: false });
-
-    if (error) throw error;
-
     res.json({
       success: true,
-      data: formatDateFields(data || [])
+      message: 'Hard delete is enabled. Deleted records are permanently removed from database.',
+      data: []
     });
   } catch (error) {
     console.error('Error fetching deleted policies:', error);
@@ -358,27 +341,12 @@ router.get('/deleted/list', async (req, res) => {
   }
 });
 
-// RESTORE - Restore soft-deleted policy
+// [DEPRECATED] - Restore soft-deleted policy (no longer used with hard delete)
 router.put('/:id/restore', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('insurance_policies')
-      .update({ deleted_at: null })
-      .eq('id', req.params.id)
-      .select();
-
-    if (error) throw error;
-
-    if (!data || data.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Policy not found'
-      });
-    }
-
     res.json({
-      success: true,
-      message: 'Policy restored successfully'
+      success: false,
+      message: 'Restore is not available with hard delete enabled. Deleted records cannot be recovered.'
     });
   } catch (error) {
     console.error('Error restoring policy:', error);
