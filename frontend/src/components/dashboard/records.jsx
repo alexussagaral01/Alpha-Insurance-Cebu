@@ -6,6 +6,55 @@ import * as XLSX from "xlsx";
 import Toast from "../../common/toast";
 import ViewModal from "../button/view";
 import EditModal from "../button/edit";
+import { initializeSocket } from "../../utils/socket";
+
+// Helper function to safely parse ISO date strings
+const parseISODate = (dateString) => {
+  if (!dateString) return "";
+  const cleanDate = dateString.substring(0, 10);
+  if (cleanDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    return cleanDate;
+  }
+  return "";
+};
+
+// Helper function to transform a policy from API response to component format
+const transformPolicy = (policy) => ({
+  id: policy.id,
+  name: policy.assured,
+  assuredName: policy.assured,
+  address: policy.address,
+  policyNumber: policy.policy_number,
+  pn: policy.policy_number,
+  cocNumber: policy.coc_number,
+  coc: policy.coc_number,
+  orNumber: policy.or_number,
+  or: policy.or_number,
+  model: policy.model,
+  fromDate: parseISODate(policy.insurance_from_date),
+  toDate: parseISODate(policy.insurance_to_date),
+  issued: parseISODate(policy.date_issued),
+  received: parseISODate(policy.date_received),
+  make: policy.make,
+  bodyType: policy.body_type,
+  color: policy.color,
+  plateNo: policy.plate_no,
+  plate: policy.plate_no,
+  chassisNo: policy.chassis_no,
+  motorNo: policy.motor_no,
+  mvFileNo: policy.mv_file_no,
+  premium: `₱${parseFloat(policy.premium).toFixed(2)}`,
+  otherCharges: `₱${parseFloat(policy.other_charges).toFixed(2)}`,
+  docStamps: `₱${parseFloat(policy.doc_stamps).toFixed(2)}`,
+  eVat: `₱${parseFloat(policy.e_vat).toFixed(2)}`,
+  localGovtTax: `₱${parseFloat(policy.lgt).toFixed(2)}`,
+  authFee: `₱${parseFloat(policy.auth_fee).toFixed(2)}`,
+  grandTotal: `₱${parseFloat(policy.total_premium).toFixed(2)}`,
+  dateCreated: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+  cType: policy.policy_type,
+  year: policy.policy_year,
+  serialChassisNo: policy.chassis_no
+});
 
 const Records = () => {
   const [searchInput, setSearchInput] = useState("");
@@ -25,20 +74,7 @@ const Records = () => {
   const [editData, setEditData] = useState(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
 
-  // Helper function to safely parse ISO date strings
-  const parseISODate = (dateString) => {
-    if (!dateString) return "";
-    
-    // Simply extract the first 10 characters (YYYY-MM-DD) regardless of format
-    const cleanDate = dateString.substring(0, 10);
-    
-    // Validate it's in YYYY-MM-DD format
-    if (cleanDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      return cleanDate;
-    }
-    
-    return "";
-  };
+
 
   // Helper function to filter by date range (issued date)
   const performDateRangeFilter = (dataToFilter, fromDate, toDate, searchTerm) => {
@@ -112,6 +148,8 @@ const Records = () => {
     setCurrentPage(1);
   };
 
+
+
   // Fetch policies from database on component mount
   useEffect(() => {
     const fetchPolicies = async () => {
@@ -132,45 +170,7 @@ const Records = () => {
         }
 
         const data = await response.json();
-        
-        // Transform database records to match component format
-        const transformedPolicies = (data.data || []).map(policy => ({
-          id: policy.id,
-          name: policy.assured,
-          assuredName: policy.assured,
-          address: policy.address,
-          policyNumber: policy.policy_number,
-          pn: policy.policy_number,
-          cocNumber: policy.coc_number,
-          coc: policy.coc_number,
-          orNumber: policy.or_number,
-          or: policy.or_number,
-          model: policy.model,
-          fromDate: parseISODate(policy.insurance_from_date),
-          toDate: parseISODate(policy.insurance_to_date),
-          issued: parseISODate(policy.date_issued),
-          received: parseISODate(policy.date_received),
-          make: policy.make,
-          bodyType: policy.body_type,
-          color: policy.color,
-          plateNo: policy.plate_no,
-          plate: policy.plate_no,
-          chassisNo: policy.chassis_no,
-          motorNo: policy.motor_no,
-          mvFileNo: policy.mv_file_no,
-          premium: `₱${parseFloat(policy.premium).toFixed(2)}`,
-          otherCharges: `₱${parseFloat(policy.other_charges).toFixed(2)}`,
-          docStamps: `₱${parseFloat(policy.doc_stamps).toFixed(2)}`,
-          eVat: `₱${parseFloat(policy.e_vat).toFixed(2)}`,
-          localGovtTax: `₱${parseFloat(policy.lgt).toFixed(2)}`,
-          authFee: `₱${parseFloat(policy.auth_fee).toFixed(2)}`,
-          grandTotal: `₱${parseFloat(policy.total_premium).toFixed(2)}`,
-          dateCreated: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-          cType: policy.policy_type,
-          year: policy.policy_year,
-          serialChassisNo: policy.chassis_no
-        }));
-
+        const transformedPolicies = (data.data || []).map(transformPolicy);
         setUsers(transformedPolicies);
         setIsLoading(false)
       } catch (error) {
@@ -180,7 +180,46 @@ const Records = () => {
       }
     };
 
+    // Initialize Socket.IO and set up event listeners
+    const socket = initializeSocket();
+
+    // Handle policy added event
+    const handlePolicyAdded = (newPolicy) => {
+      console.log('📨 New policy added via Socket.IO:', newPolicy);
+      const transformedPolicy = transformPolicy(newPolicy);
+      setUsers(prev => [transformedPolicy, ...prev]);
+      setToast({ message: 'New policy added!', type: 'success' });
+    };
+
+    // Handle policy updated event
+    const handlePolicyUpdated = (updatedPolicy) => {
+      console.log('📟 Policy updated via Socket.IO:', updatedPolicy);
+      const transformedPolicy = transformPolicy(updatedPolicy);
+      setUsers(prev => prev.map(user => user.id === updatedPolicy.id ? transformedPolicy : user));
+      setToast({ message: 'Policy updated!', type: 'success' });
+    };
+
+    // Handle policy deleted event
+    const handlePolicyDeleted = (deletedData) => {
+      console.log('🗑️ Policy deleted via Socket.IO:', deletedData);
+      setUsers(prev => prev.filter(user => user.id !== deletedData.id));
+      setToast({ message: 'Policy deleted!', type: 'success' });
+    };
+
+    // Register event listeners
+    socket.on('policy_added', handlePolicyAdded);
+    socket.on('policy_updated', handlePolicyUpdated);
+    socket.on('policy_deleted', handlePolicyDeleted);
+
+    // Fetch initial data
     fetchPolicies();
+
+    // Cleanup function
+    return () => {
+      socket.off('policy_added', handlePolicyAdded);
+      socket.off('policy_updated', handlePolicyUpdated);
+      socket.off('policy_deleted', handlePolicyDeleted);
+    };
   }, []);
   
   const handleAddClick = () => {

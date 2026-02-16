@@ -1,6 +1,7 @@
 import express from 'express';
 import supabase from '../config/database.js';
 import authMiddleware from '../middleware/auth.js';
+import { io } from '../../index.js';
 
 const router = express.Router();
 
@@ -141,6 +142,42 @@ router.post('/', async (req, res) => {
 
     if (error) throw error;
 
+    // Format the created policy data
+    const createdPolicy = {
+      id: data[0]?.id,
+      assured: data[0]?.assured,
+      address: data[0]?.address,
+      coc_number: data[0]?.coc_number,
+      or_number: data[0]?.or_number,
+      policy_number: data[0]?.policy_number,
+      policy_type: data[0]?.policy_type,
+      policy_year: data[0]?.policy_year,
+      date_issued: data[0]?.date_issued,
+      date_received: data[0]?.date_received,
+      insurance_from_date: data[0]?.insurance_from_date,
+      insurance_to_date: data[0]?.insurance_to_date,
+      model: data[0]?.model,
+      make: data[0]?.make,
+      body_type: data[0]?.body_type,
+      color: data[0]?.color,
+      mv_file_no: data[0]?.mv_file_no,
+      plate_no: data[0]?.plate_no,
+      chassis_no: data[0]?.chassis_no,
+      motor_no: data[0]?.motor_no,
+      premium: data[0]?.premium,
+      other_charges: data[0]?.other_charges,
+      auth_fee: data[0]?.auth_fee,
+      doc_stamps: data[0]?.doc_stamps,
+      e_vat: data[0]?.e_vat,
+      lgt: data[0]?.lgt,
+      total_premium: data[0]?.total_premium,
+      created_at: data[0]?.created_at,
+      updated_at: data[0]?.updated_at
+    };
+
+    // Emit Socket.IO event to all connected clients
+    io.emit('policy_added', createdPolicy);
+
     res.status(201).json({
       success: true,
       message: 'Policy created successfully',
@@ -275,6 +312,39 @@ router.put('/:id', async (req, res) => {
       });
     }
 
+    // Emit Socket.IO event to all connected clients
+    io.emit('policy_updated', {
+      id: data[0]?.id,
+      assured: data[0]?.assured,
+      address: data[0]?.address,
+      coc_number: data[0]?.coc_number,
+      or_number: data[0]?.or_number,
+      policy_number: data[0]?.policy_number,
+      policy_type: data[0]?.policy_type,
+      policy_year: data[0]?.policy_year,
+      date_issued: data[0]?.date_issued,
+      date_received: data[0]?.date_received,
+      insurance_from_date: data[0]?.insurance_from_date,
+      insurance_to_date: data[0]?.insurance_to_date,
+      model: data[0]?.model,
+      make: data[0]?.make,
+      body_type: data[0]?.body_type,
+      color: data[0]?.color,
+      mv_file_no: data[0]?.mv_file_no,
+      plate_no: data[0]?.plate_no,
+      chassis_no: data[0]?.chassis_no,
+      motor_no: data[0]?.motor_no,
+      premium: data[0]?.premium,
+      other_charges: data[0]?.other_charges,
+      auth_fee: data[0]?.auth_fee,
+      doc_stamps: data[0]?.doc_stamps,
+      e_vat: data[0]?.e_vat,
+      lgt: data[0]?.lgt,
+      total_premium: data[0]?.total_premium,
+      created_at: data[0]?.created_at,
+      updated_at: data[0]?.updated_at
+    });
+
     res.json({
       success: true,
       message: 'Policy updated successfully'
@@ -307,6 +377,9 @@ router.delete('/:id', async (req, res) => {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Emit Socket.IO event to all connected clients
+    io.emit('policy_deleted', { id: parseInt(id) });
 
     res.json({
       success: true,
