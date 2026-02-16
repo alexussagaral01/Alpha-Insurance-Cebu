@@ -6,7 +6,6 @@ import * as XLSX from "xlsx";
 import Toast from "../../common/toast";
 import ViewModal from "../button/view";
 import EditModal from "../button/edit";
-import { initializeSocket } from "../../utils/socket";
 
 // Helper function to safely parse ISO date strings
 const parseISODate = (dateString) => {
@@ -150,11 +149,11 @@ const Records = () => {
 
 
 
-  // Fetch policies from database on component mount
+  // Fetch policies from database on component mount and set up auto-refresh
   useEffect(() => {
-    const fetchPolicies = async () => {
+    // Function to fetch without showing loading (for polling)
+    const fetchPoliciesQuiet = async () => {
       try {
-        setIsLoading(true);
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
         const username = localStorage.getItem('user');
         const adminId = localStorage.getItem('adminId');
@@ -172,53 +171,31 @@ const Records = () => {
         const data = await response.json();
         const transformedPolicies = (data.data || []).map(transformPolicy);
         setUsers(transformedPolicies);
-        setIsLoading(false)
       } catch (error) {
         console.error('Error fetching policies:', error);
-        setUsers([]);
+      }
+    };
+
+    // Initial fetch with loading indicator
+    const fetchPoliciesInitial = async () => {
+      try {
+        setIsLoading(true);
+        await fetchPoliciesQuiet();
+        setIsLoading(false);
+      } catch (error) {
         setIsLoading(false);
       }
     };
 
-    // Initialize Socket.IO and set up event listeners
-    const socket = initializeSocket();
+    // Fetch initial data (shows loading)
+    fetchPoliciesInitial();
 
-    // Handle policy added event
-    const handlePolicyAdded = (newPolicy) => {
-      console.log('📨 New policy added via Socket.IO:', newPolicy);
-      const transformedPolicy = transformPolicy(newPolicy);
-      setUsers(prev => [transformedPolicy, ...prev]);
-      setToast({ message: 'New policy added!', type: 'success' });
-    };
-
-    // Handle policy updated event
-    const handlePolicyUpdated = (updatedPolicy) => {
-      console.log('📟 Policy updated via Socket.IO:', updatedPolicy);
-      const transformedPolicy = transformPolicy(updatedPolicy);
-      setUsers(prev => prev.map(user => user.id === updatedPolicy.id ? transformedPolicy : user));
-      setToast({ message: 'Policy updated!', type: 'success' });
-    };
-
-    // Handle policy deleted event
-    const handlePolicyDeleted = (deletedData) => {
-      console.log('🗑️ Policy deleted via Socket.IO:', deletedData);
-      setUsers(prev => prev.filter(user => user.id !== deletedData.id));
-      setToast({ message: 'Policy deleted!', type: 'success' });
-    };
-
-    // Register event listeners
-    socket.on('policy_added', handlePolicyAdded);
-    socket.on('policy_updated', handlePolicyUpdated);
-    socket.on('policy_deleted', handlePolicyDeleted);
-
-    // Fetch initial data
-    fetchPolicies();
+    // Set up auto-refresh polling every 5 seconds (no loading popup)
+    const pollInterval = setInterval(fetchPoliciesQuiet, 5000);
 
     // Cleanup function
     return () => {
-      socket.off('policy_added', handlePolicyAdded);
-      socket.off('policy_updated', handlePolicyUpdated);
-      socket.off('policy_deleted', handlePolicyDeleted);
+      clearInterval(pollInterval);
     };
   }, []);
   
