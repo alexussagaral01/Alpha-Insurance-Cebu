@@ -99,6 +99,13 @@ function Menu() {
     }
   });
 
+  // Helper function to format date from yyyy-MM-dd to dd/mm/yyyy
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return '-';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
   // Save formData to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('menuFormData', JSON.stringify(formData));
@@ -1705,7 +1712,7 @@ function Menu() {
           border: '3px solid #a7d49b'
         }}>
           <p style={{fontSize: '10px', color: '#5A8C3A', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0'}}>Issued</p>
-          <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>{formData.dateIssued || '-'}</p>
+          <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>{formatDateDisplay(formData.dateIssued)}</p>
         </div>
         <div style={{
           padding: '12px', 
@@ -1714,7 +1721,7 @@ function Menu() {
           border: '3px solid #a7d49b'
         }}>
           <p style={{fontSize: '10px', color: '#5A8C3A', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0'}}>Received</p>
-          <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>{formData.dateReceived || '-'}</p>
+          <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>{formatDateDisplay(formData.dateReceived)}</p>
         </div>
       </div>
     </div>
@@ -1749,7 +1756,7 @@ function Menu() {
         }}>
           <p style={{fontSize: '10px', color: '#5A8C3A', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0'}}>From</p>
           <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>
-            {formData.insuranceFromDate ? `${formData.insuranceFromDate} ${formData.insuranceFromTime}` : '-'}
+            {formData.insuranceFromDate ? formatDateDisplay(formData.insuranceFromDate) : '-'}
           </p>
         </div>
         <div style={{
@@ -1760,7 +1767,7 @@ function Menu() {
         }}>
           <p style={{fontSize: '10px', color: '#5A8C3A', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0'}}>To</p>
           <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>
-            {formData.insuranceToDate ? `${formData.insuranceToDate} ${formData.insuranceToTime}` : '-'}
+            {formData.insuranceToDate ? formatDateDisplay(formData.insuranceToDate) : '-'}
           </p>
         </div>
       </div>

@@ -364,7 +364,7 @@ table {
   border-collapse: collapse;
   table-layout: auto; /* let columns size to content */
   min-width: 0; /* allow table to shrink below previous hard limits */
-  font-size: 14px;
+  font-size: 12px;
   margin: 0;
 }
 
@@ -380,10 +380,10 @@ thead th {
   background: #1e6b47 !important; /* NEW darker green color */
   color: #ffffff;
   font-weight: 700;
-  font-size: 12px;
-  padding: 14px 12px;
+  font-size: 11px;
+  padding: 10px 10px;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -392,13 +392,13 @@ thead th {
 }
 
 th {
-  padding: 8px 10px;
+  padding: 10px 10px;
   text-align: left;
   font-weight: 700;
   color: #ffffff;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-size: 12px;
+  font-size: 11px;
   vertical-align: middle;
   word-break: break-word;
   white-space: normal; /* allow wrapping */
@@ -407,13 +407,14 @@ th {
 }
 
 td {
-  padding: 12px 12px;
+  padding: 8px 10px;
   border-bottom: 1px solid #e5e7eb;
   color: #1f2937;
   vertical-align: middle;
   word-break: break-word;
   white-space: normal; /* allow wrapping */
   overflow-wrap: anywhere;
+  font-size: 12px;
 }
 
 tbody tr {

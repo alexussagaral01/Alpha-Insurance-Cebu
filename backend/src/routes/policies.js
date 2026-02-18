@@ -224,12 +224,12 @@ router.put('/:id', async (req, res) => {
       premium, other_charges, doc_stamps, e_vat, lgt, auth_fee, total_premium
     } = req.body;
 
-    // Validate required fields
-    if (!assured || !coc_number || !or_number) {
+    // Validate required fields (only assured is required)
+    if (!assured) {
       return res.status(400).json({
         success: false,
         message: 'Error updating policy',
-        error: 'Required fields missing: assured, coc_number, or_number'
+        error: 'Required field missing: assured'
       });
     }
 
@@ -238,8 +238,8 @@ router.put('/:id', async (req, res) => {
       .update({
         assured: String(assured).trim(),
         address: String(address || '').trim(),
-        coc_number: String(coc_number).trim(),
-        or_number: String(or_number).trim(),
+        coc_number: coc_number !== null && coc_number !== undefined ? String(coc_number).trim() : null,
+        or_number: or_number !== null && or_number !== undefined ? String(or_number).trim() : null,
         policy_number: String(policy_number || '').trim(),
         policy_type: String(policy_type || '').trim(),
         policy_year: parseInt(policy_year) || new Date().getFullYear(),
@@ -251,10 +251,10 @@ router.put('/:id', async (req, res) => {
         make: String(make || '').trim(),
         body_type: String(body_type || '').trim(),
         color: String(color || '').trim(),
-        mv_file_no: String(mv_file_no || '').trim(),
-        plate_no: String(plate_no || '').trim(),
-        chassis_no: String(chassis_no || '').trim(),
-        motor_no: String(motor_no || '').trim(),
+        mv_file_no: mv_file_no !== null && mv_file_no !== undefined ? String(mv_file_no).trim() : null,
+        plate_no: plate_no !== null && plate_no !== undefined ? String(plate_no).trim() : null,
+        chassis_no: chassis_no !== null && chassis_no !== undefined ? String(chassis_no).trim() : null,
+        motor_no: motor_no !== null && motor_no !== undefined ? String(motor_no).trim() : null,
         premium: parseFloat(premium) || 0,
         other_charges: parseFloat(other_charges) || 0,
         auth_fee: parseFloat(auth_fee) || 50.40,

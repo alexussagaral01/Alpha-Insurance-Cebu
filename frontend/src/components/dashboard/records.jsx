@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/record.css";
-import { FiEye, FiEdit2, FiTrash2, FiDownload, FiAlertCircle, FiRotateCcw } from "react-icons/fi";
+import { FiEye, FiEdit2, FiTrash2, FiDownload, FiAlertCircle, FiRotateCcw, FiSearch } from "react-icons/fi";
 import * as XLSX from "xlsx";
 import Toast from "../../common/toast";
 import ViewModal from "../button/view";
@@ -71,7 +71,11 @@ const Records = () => {
   const [modalType, setModalType] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [editData, setEditData] = useState(null);
+  const [originalEditData, setOriginalEditData] = useState(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
+  
+  // Bulk selection states
+  const [selectedRecords, setSelectedRecords] = useState(new Set());
 
 
 
@@ -104,12 +108,6 @@ const Records = () => {
     setFilteredUsers(results);
     setIsSearchActive(true);
     setCurrentPage(1);
-    
-    // Clear the date inputs after filtering (results will still be displayed)
-    setTimeout(() => {
-      setDateFrom("");
-      setDateTo("");
-    }, 0);
   };
 
   // Helper function to perform search only
@@ -135,6 +133,25 @@ const Records = () => {
     setFilteredUsers(results);
     setIsSearchActive(true);
     setCurrentPage(1);
+  };
+
+  // Handle FROM date change - just update state
+  const handleFromDateChange = (e) => {
+    setDateFrom(e.target.value);
+  };
+
+  // Handle TO date change - just update state
+  const handleToDateChange = (e) => {
+    setDateTo(e.target.value);
+  };
+
+  // Apply date filter when user clicks Apply button
+  const handleApplyDateFilter = () => {
+    if (dateFrom !== "" && dateTo !== "") {
+      performDateRangeFilter(users, dateFrom, dateTo, searchInput);
+    } else {
+      setToast({ message: 'Please select both From and To dates', type: 'error' });
+    }
   };
 
   // Reset filters
@@ -246,9 +263,15 @@ const Records = () => {
   // items per page becomes selectable by admin (5 or 10)
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
+  const [windowStart, setWindowStart] = useState(1);
 
   const displayUsers = isSearchActive ? filteredUsers : users;
   const totalPages = Math.max(1, Math.ceil(displayUsers.length / itemsPerPage));
+
+  // Sliding window pagination: show only 3 pages at a time
+  const WINDOW_SIZE = 3;
+  const windowEnd = Math.min(windowStart + WINDOW_SIZE - 1, totalPages);
+  const visiblePages = Array.from({ length: windowEnd - windowStart + 1 }, (_, i) => windowStart + i);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -256,10 +279,27 @@ const Records = () => {
     }
   }, [displayUsers.length, currentPage, totalPages]);
 
+  // Adjust window when current page changes
+  useEffect(() => {
+    if (currentPage < windowStart) {
+      setWindowStart(Math.max(1, currentPage - WINDOW_SIZE + 1));
+    } else if (currentPage > windowEnd) {
+      setWindowStart(currentPage);
+    }
+  }, [currentPage, windowStart, windowEnd]);
+
   const startIdx = (currentPage - 1) * itemsPerPage;
   const currentUsers = displayUsers.slice(startIdx, startIdx + itemsPerPage);
 
-  const goToPage = (n) => setCurrentPage(Math.min(Math.max(1, n), totalPages));
+  const goToPage = (n) => {
+    const newPage = Math.min(Math.max(1, n), totalPages);
+    setCurrentPage(newPage);
+    
+    // Shift window if clicking the last visible page
+    if (newPage === windowEnd && windowEnd < totalPages) {
+      setWindowStart(newPage);
+    }
+  };
   const handlePrev = () => goToPage(currentPage - 1);
   const handleNext = () => goToPage(currentPage + 1);
 
@@ -280,16 +320,18 @@ const openEdit = (user) => {
     otherCharges: otherChargesNum,
     // Keep year for payload construction
     year: user.year,
-    // Ensure all required fields have values (not undefined/null)
-    cocNumber: user.cocNumber || user.coc || "N/A",
-    orNumber: user.orNumber || user.or || "N/A",
-    policyNumber: user.policyNumber || user.pn || "N/A",
-    plateNo: user.plateNo || user.plate || "N/A",
-    serialChassisNo: user.serialChassisNo || user.chassisNo || "N/A"
+    // PRESERVE NULL VALUES - don't convert to "N/A" here
+    // The form will display placeholder text, but the actual data remains null
+    cocNumber: user.cocNumber !== null && user.cocNumber !== undefined ? user.cocNumber : null,
+    orNumber: user.orNumber !== null && user.orNumber !== undefined ? user.orNumber : null,
+    policyNumber: user.policyNumber || user.pn,
+    plateNo: user.plateNo || user.plate,
+    serialChassisNo: user.serialChassisNo || user.chassisNo
   };
   
   setSelectedUser(user);
   setEditData(initialEdit);
+  setOriginalEditData(JSON.parse(JSON.stringify(initialEdit))); // Deep copy
   setModalType("edit");
   setModalOpen(true);
 };
@@ -306,6 +348,83 @@ const openEdit = (user) => {
     setSelectedUser(null);
     setEditData(null);
     setDeleteConfirmUser(null);
+  };
+
+  // Bulk selection handlers
+  const toggleSelectRecord = (recordId) => {
+    const newSelected = new Set(selectedRecords);
+    if (newSelected.has(recordId)) {
+      newSelected.delete(recordId);
+    } else {
+      newSelected.add(recordId);
+    }
+    setSelectedRecords(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedRecords.size === displayUsers.length) {
+      // Deselect all
+      setSelectedRecords(new Set());
+    } else {
+      // Select all records in filtered results
+      const allIds = new Set(displayUsers.map(u => u.id));
+      setSelectedRecords(allIds);
+    }
+  };
+
+  const openBulkDeleteConfirm = () => {
+    if (selectedRecords.size === 0) {
+      setToast({ message: 'No records selected for deletion', type: 'error' });
+      return;
+    }
+    setModalType("bulkDelete");
+    setModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedRecords.size === 0) return;
+
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const username = localStorage.getItem('user');
+      const adminId = localStorage.getItem('adminId');
+
+      // Delete each selected record
+      const deletePromises = Array.from(selectedRecords).map(recordId =>
+        fetch(`${apiUrl}/policies/${recordId}`, {
+          method: 'DELETE',
+          headers: {
+            'x-username': username,
+            'x-admin-id': adminId
+          }
+        })
+      );
+
+      const responses = await Promise.all(deletePromises);
+      
+      // Check if all deletions were successful
+      for (const response of responses) {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to delete some records');
+        }
+      }
+
+      // Update users list by removing deleted records
+      setUsers((prev) => {
+        const newUsers = prev.filter((u) => !selectedRecords.has(u.id));
+        setCurrentPage((p) => Math.min(p, Math.max(1, Math.ceil(newUsers.length / itemsPerPage))));
+        return newUsers;
+      });
+
+      const count = selectedRecords.size;
+      setToast({ message: `${count} record(s) deleted successfully`, type: 'success' });
+      setSelectedRecords(new Set());
+      closeModal();
+    } catch (error) {
+      console.error('Error bulk deleting policies:', error);
+      setToast({ message: `Failed to delete records: ${error.message}`, type: 'error' });
+    }
   };
 
   // Real-time calculation handler for edit
@@ -341,6 +460,31 @@ const openEdit = (user) => {
     const handleSaveEdit = async () => {
       if (!editData) return;
       
+      // Check if anything actually changed
+      const fieldsToCheck = [
+        'assuredName', 'name', 'address', 'cocNumber', 'coc', 'orNumber', 'or',
+        'policyNumber', 'pn', 'cType', 'year', 'issued', 'received',
+        'fromDate', 'toDate', 'model', 'make', 'bodyType', 'color',
+        'mvFileNo', 'plateNo', 'plate', 'serialChassisNo', 'chassisNo', 'motorNo',
+        'premium', 'otherCharges', 'docStamps', 'eVat', 'localGovtTax', 'authFee', 'grandTotal'
+      ];
+      
+      let hasChanges = false;
+      for (let field of fieldsToCheck) {
+        const originalVal = originalEditData?.[field];
+        const currentVal = editData[field];
+        if (originalVal !== currentVal) {
+          hasChanges = true;
+          break;
+        }
+      }
+      
+      if (!hasChanges) {
+        setToast({ message: 'No changes were made', type: 'info' });
+        setModalOpen(false);
+        return;
+      }
+      
       try {
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
         
@@ -355,32 +499,37 @@ const openEdit = (user) => {
         
         const policyYear = editData.year || parseInt(editData.model?.split(' ')[0]) || new Date().getFullYear();
         
-        // Helper to ensure non-empty string
-        const ensureValue = (val) => {
-          const str = String(val || "").trim();
-          return str.length > 0 ? str : "N/A";
+        // Helper to trim and keep value
+        const trimValue = (val) => {
+          return String(val || "").trim();
+        };
+        
+        // Helper to return null for empty strings (for optional fields)
+        const nullIfEmpty = (val) => {
+          const trimmed = trimValue(val);
+          return trimmed === "" ? null : trimmed;
         };
         
         const payload = {
-          assured: ensureValue(editData.assuredName || editData.name),
-          address: ensureValue(editData.address),
-          coc_number: ensureValue(editData.cocNumber || editData.coc),
-          or_number: ensureValue(editData.orNumber || editData.or),
-          policy_number: ensureValue(editData.policyNumber || editData.pn),
-          policy_type: ensureValue(editData.cType),
+          assured: trimValue(editData.assuredName || editData.name) || "N/A",
+          address: trimValue(editData.address) || "N/A",
+          coc_number: nullIfEmpty(editData.cocNumber),
+          or_number: nullIfEmpty(editData.orNumber),
+          policy_number: trimValue(editData.policyNumber || editData.pn) || "N/A",
+          policy_type: trimValue(editData.cType) || "N/A",
           policy_year: policyYear,
           date_issued: editData.issued || "0000-00-00",
           date_received: editData.received || "0000-00-00",
           insurance_from_date: editData.fromDate || "0000-00-00",
           insurance_to_date: editData.toDate || "0000-00-00",
-          model: ensureValue(editData.model),
-          make: ensureValue(editData.make),
-          body_type: ensureValue(editData.bodyType),
-          color: ensureValue(editData.color),
-          mv_file_no: ensureValue(editData.mvFileNo),
-          plate_no: ensureValue(editData.plateNo || editData.plate),
-          chassis_no: ensureValue(editData.serialChassisNo || editData.chassisNo),
-          motor_no: ensureValue(editData.motorNo),
+          model: trimValue(editData.model) || "N/A",
+          make: trimValue(editData.make) || "N/A",
+          body_type: trimValue(editData.bodyType) || "N/A",
+          color: trimValue(editData.color) || "N/A",
+          mv_file_no: nullIfEmpty(editData.mvFileNo),
+          plate_no: nullIfEmpty(editData.plateNo || editData.plate),
+          chassis_no: nullIfEmpty(editData.serialChassisNo || editData.chassisNo),
+          motor_no: nullIfEmpty(editData.motorNo),
           premium: premiumNum,
           other_charges: otherChargesNum,
           doc_stamps: docStampsNum,
@@ -1088,8 +1237,38 @@ const openEdit = (user) => {
       <div className="top-bar">
         <div className="top-left">
           <button className="btn add-btn" onClick={handleAddClick} style={noBorderStyle}>ADD</button>
+          {selectedRecords.size > 0 && (
+            <span style={{ marginLeft: "16px", fontSize: "14px", color: "#1e6b47", fontWeight: "600" }}>
+              {selectedRecords.size} selected
+            </span>
+          )}
         </div>
         <div className="top-right" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {selectedRecords.size > 0 && (
+            <button 
+              className="btn bulk-delete-btn" 
+              onClick={openBulkDeleteConfirm}
+              style={{
+                ...noBorderStyle,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                backgroundColor: "#ef4444",
+                color: "white",
+                borderRadius: "4px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.3s"
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = "#dc2626"}
+              onMouseLeave={(e) => e.target.style.backgroundColor = "#ef4444"}
+              title={`Delete ${selectedRecords.size} selected record(s)`}
+            >
+              <FiTrash2 size={18} /> Delete All
+            </button>
+          )}
           <button 
             className="btn export-btn" 
             onClick={exportToExcel}
@@ -1123,21 +1302,7 @@ const openEdit = (user) => {
             <input 
               type="date" 
               value={dateFrom}
-              onChange={(e) => {
-                const newFromDate = e.target.value;
-                setDateFrom(newFromDate);
-                
-                // Only trigger filter if both dates will be set
-                if (newFromDate !== "" && dateTo !== "") {
-                  // Both dates are populated - automatically filter
-                  performDateRangeFilter(users, newFromDate, dateTo, searchInput);
-                } else if (newFromDate === "" && dateTo === "" && searchInput.trim() === "") {
-                  // Clear all filters if everything is empty
-                  setFilteredUsers([]);
-                  setIsSearchActive(false);
-                  setCurrentPage(1);
-                }
-              }}
+              onChange={handleFromDateChange}
             />
           </div>
 
@@ -1146,23 +1311,32 @@ const openEdit = (user) => {
             <input 
               type="date" 
               value={dateTo}
-              onChange={(e) => {
-                const newToDate = e.target.value;
-                setDateTo(newToDate);
-                
-                // Only trigger filter if both dates will be set
-                if (dateFrom !== "" && newToDate !== "") {
-                  // Both dates are populated - automatically filter
-                  performDateRangeFilter(users, dateFrom, newToDate, searchInput);
-                } else if (dateFrom === "" && newToDate === "" && searchInput.trim() === "") {
-                  // Clear all filters if everything is empty
-                  setFilteredUsers([]);
-                  setIsSearchActive(false);
-                  setCurrentPage(1);
-                }
-              }}
+              onChange={handleToDateChange}
             />
           </div>
+
+          <button
+            onClick={handleApplyDateFilter}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "11px",
+              backgroundColor: "#1e6b47",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              alignSelf: "flex-end",
+              gap: "6px"
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = "#165638"}
+            onMouseLeave={(e) => e.target.style.backgroundColor = "#1e6b47"}
+            title="Apply date filter"
+          >
+            <FiSearch size={16} />
+          </button>
 
           <button
             onClick={handleResetFilters}
@@ -1228,23 +1402,41 @@ const openEdit = (user) => {
         <table style={{ borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th style={headerStyle}>NAME</th>
-              <th style={headerStyle}>POLICY</th>
-              <th style={headerStyle}>COC</th>
-              <th style={headerStyle}>OR</th>
-              <th style={headerStyle}>PLATE NO</th>
-              <th style={headerStyle}>ACTION</th>
+              <th style={{ ...headerStyle, width: "50px", minWidth: "50px", textAlign: "center" }}>
+                <input 
+                  type="checkbox" 
+                  checked={selectedRecords.size === displayUsers.length && displayUsers.length > 0}
+                  onChange={handleSelectAll}
+                  title={selectedRecords.size === displayUsers.length ? "Deselect all" : "Select all"}
+                  style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                />
+              </th>
+              <th style={{ ...headerStyle, width: "20%", minWidth: "120px" }}>NAME</th>
+              <th style={{ ...headerStyle, width: "22%", minWidth: "140px" }}>POLICY</th>
+              <th style={{ ...headerStyle, width: "12%", minWidth: "100px" }}>COC</th>
+              <th style={{ ...headerStyle, width: "12%", minWidth: "100px" }}>OR</th>
+              <th style={{ ...headerStyle, width: "14%", minWidth: "110px" }}>PLATE NO</th>
+              <th style={{ ...headerStyle, width: "10%", minWidth: "80px", textAlign: "center" }}>ACTION</th>
             </tr>
           </thead>
           <tbody>
             {currentUsers.map((u) => (
               <tr key={u.id}>
-                <td>{u.name}</td>
-                <td>{`${u.cType || "N/A"}-${u.pn || "N/A"}/${u.year || "N/A"}`}</td>
-                <td>{u.coc}</td>
-                <td>{u.or}</td>
-                <td>{u.plate}</td>
-                <td>
+                <td style={{ width: "50px", minWidth: "50px", textAlign: "center" }}>
+                  <input 
+                    type="checkbox" 
+                    checked={selectedRecords.has(u.id)}
+                    onChange={() => toggleSelectRecord(u.id)}
+                    title={selectedRecords.has(u.id) ? "Deselect" : "Select"}
+                    style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                  />
+                </td>
+                <td style={{ width: "20%", minWidth: "120px" }}>{u.name}</td>
+                <td style={{ width: "22%", minWidth: "140px" }}>{`${u.cType || "N/A"}-${u.pn || "N/A"}/${u.year || "N/A"}`}</td>
+                <td style={{ width: "12%", minWidth: "100px" }}>{u.coc}</td>
+                <td style={{ width: "12%", minWidth: "100px" }}>{u.or}</td>
+                <td style={{ width: "14%", minWidth: "110px" }}>{u.plate}</td>
+                <td style={{ width: "10%", minWidth: "80px", textAlign: "center" }}>
                   <button
                     className="action-btn view-btn"
                     title="View"
@@ -1340,32 +1532,29 @@ const openEdit = (user) => {
             Prev
           </button>
 
-          {Array.from({ length: totalPages }, (_, i) => {
-            const page = i + 1;
-            return (
-              <button
-                key={page}
-                className={`page-btn ${currentPage === page ? "active" : ""}`}
-                onClick={() => goToPage(page)}
-                style={{
-                  ...noBorderStyle,
-                  padding: "8px 12px",
-                  minWidth: "40px",
-                  backgroundColor: currentPage === page ? "#059669" : "#1e6b47",
-                  color: "#ffffff",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  fontWeight: currentPage === page ? "700" : "600",
-                  cursor: "pointer",
-                  transition: "all 0.3s ease",
-                  border: "2px solid rgba(255, 255, 255, 0.3)",
-                  boxShadow: currentPage === page ? "0 4px 16px rgba(0, 0, 0, 0.3)" : "0 2px 8px rgba(0, 0, 0, 0.15)"
-                }}
-              >
-                {page}
-              </button>
-            );
-          })}
+          {visiblePages.map((page) => (
+            <button
+              key={page}
+              className={`page-btn ${currentPage === page ? "active" : ""}`}
+              onClick={() => goToPage(page)}
+              style={{
+                ...noBorderStyle,
+                padding: "8px 12px",
+                minWidth: "40px",
+                backgroundColor: currentPage === page ? "#059669" : "#1e6b47",
+                color: "#ffffff",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: currentPage === page ? "700" : "600",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                border: "2px solid rgba(255, 255, 255, 0.3)",
+                boxShadow: currentPage === page ? "0 4px 16px rgba(0, 0, 0, 0.3)" : "0 2px 8px rgba(0, 0, 0, 0.15)"
+              }}
+            >
+              {page}
+            </button>
+          ))}
 
           <button 
             className="page-btn" 
@@ -1528,6 +1717,110 @@ const openEdit = (user) => {
               >
                 <FiTrash2 size={16} />
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalOpen && modalType === "bulkDelete" && (
+        <div style={premiumModalBackdrop}>
+          <div style={{
+            ...premiumModal,
+            width: "90%",
+            maxWidth: "500px",
+            maxHeight: "auto"
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={premiumModalHeader}>
+              <div className="modal-header-decoration"></div>
+              <h3 style={premiumModalTitle}>
+                <FiTrash2 size={30} />
+                Bulk Delete Records
+              </h3>
+            </div>
+
+            <div style={premiumModalBody}>
+              <div style={{ textAlign: "center", padding: "20px 16px" }}>
+                <div style={{
+                  ...iconBadge,
+                  backgroundColor: "#fee2e2",
+                  color: "#dc2626",
+                  margin: "0 auto 16px"
+                }}
+                className="icon-badge-pulse">
+                  <FiTrash2 size={24} />
+                </div>
+                <h4 style={{ 
+                  fontSize: "18px", 
+                  fontWeight: "700", 
+                  color: "#111827",
+                  marginBottom: "10px" 
+                }}>
+                  Confirm Bulk Deletion
+                </h4>
+                <p style={{ 
+                  fontSize: "0.9em",
+                  color: "#6b7280", 
+                  marginBottom: "12px",
+                  lineHeight: "1.5"
+                }}>
+                  You are about to permanently delete
+                </p>
+                <div style={{
+                  padding: "16px",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: "8px",
+                  margin: "12px 0",
+                  border: "1px solid #e5e7eb"
+                }}>
+                  <p style={{
+                    fontSize: "24px",
+                    fontWeight: "700",
+                    color: "#ef4444",
+                    margin: 0
+                  }}>
+                    {selectedRecords.size} record(s)
+                  </p>
+                </div>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  padding: "10px 14px",
+                  backgroundColor: "#fef3c7",
+                  border: "1px solid #fbbf24",
+                  borderRadius: "8px",
+                  marginTop: "14px"
+                }}>
+                  <FiAlertCircle size={16} color="#92400e" />
+                  <p style={{ 
+                    fontSize: "13px",
+                    color: "#92400e",
+                    margin: 0,
+                    fontWeight: "600"
+                  }}>
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={premiumModalFooter}>
+              <button 
+                style={secondaryButton}
+                className="premium-button secondary-button"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
+              <button 
+                style={deleteButton}
+                className="premium-button delete-button"
+                onClick={confirmBulkDelete}
+              >
+                <FiTrash2 size={16} />
+                Delete All
               </button>
             </div>
           </div>
