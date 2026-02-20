@@ -90,10 +90,11 @@ const Records = () => {
         const nameMatch = user.name ? String(user.name).trim().toLowerCase().startsWith(searchLower) : false;
         const formattedPn = `${user.cType || ""}${user.cType ? "-" : ""}${user.pn || ""}${user.year ? "/" + user.year : ""}`.toLowerCase();
         const pnMatch = formattedPn ? formattedPn.startsWith(searchLower) : false;
+        const rawPnMatch = user.pn ? String(user.pn).trim().toLowerCase().startsWith(searchLower) : false;
         const cocMatch = user.coc ? String(user.coc).trim().toLowerCase().startsWith(searchLower) : false;
         const orMatch = user.or ? String(user.or).trim().toLowerCase().startsWith(searchLower) : false;
         const plateMatch = user.plate ? String(user.plate).trim().toLowerCase().startsWith(searchLower) : false;
-        return nameMatch || pnMatch || cocMatch || orMatch || plateMatch;
+        return nameMatch || pnMatch || rawPnMatch || cocMatch || orMatch || plateMatch;
       });
     }
     
@@ -124,10 +125,11 @@ const Records = () => {
       const nameMatch = user.name ? String(user.name).trim().toLowerCase().startsWith(searchLower) : false;
       const formattedPn = `${user.cType || ""}${user.cType ? "-" : ""}${user.pn || ""}${user.year ? "/" + user.year : ""}`.toLowerCase();
       const pnMatch = formattedPn ? formattedPn.startsWith(searchLower) : false;
+      const rawPnMatch = user.pn ? String(user.pn).trim().toLowerCase().startsWith(searchLower) : false;
       const cocMatch = user.coc ? String(user.coc).trim().toLowerCase().startsWith(searchLower) : false;
       const orMatch = user.or ? String(user.or).trim().toLowerCase().startsWith(searchLower) : false;
       const plateMatch = user.plate ? String(user.plate).trim().toLowerCase().startsWith(searchLower) : false;
-      return nameMatch || pnMatch || cocMatch || orMatch || plateMatch;
+      return nameMatch || pnMatch || rawPnMatch || cocMatch || orMatch || plateMatch;
     });
     
     setFilteredUsers(results);
