@@ -149,10 +149,25 @@ function Menu() {
     const uppercaseFields = ['assured', 'address', 'model', 'make', 'bodyType', 'color', 'mvFileNo', 'plateNo', 'serialChassisNo', 'motorNo'];
     const finalValue = uppercaseFields.includes(name) ? value.toUpperCase() : value;
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: finalValue
-    }));
+    // Auto-sync Issued Date and Received Date
+    if (name === 'dateIssued') {
+      setFormData(prev => ({
+        ...prev,
+        dateIssued: finalValue,
+        dateReceived: finalValue // Automatically set Received Date to same as Issued Date
+      }));
+    } else if (name === 'dateReceived') {
+      setFormData(prev => ({
+        ...prev,
+        dateReceived: finalValue,
+        dateIssued: finalValue // Automatically set Issued Date to same as Received Date
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: finalValue
+      }));
+    }
   };
 
   const handleBlur = (e) => {
