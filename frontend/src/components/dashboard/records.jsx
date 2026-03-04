@@ -77,10 +77,18 @@ const Records = () => {
   // Bulk selection states
   const [selectedRecords, setSelectedRecords] = useState(new Set());
 
-
+  // FIX: Re-applies whichever filter/search is currently active on a given dataset.
+  // Called after edit/delete so the table updates instantly without a page refresh.
+  const reapplyActiveFilter = (updatedUsers, currentSearchInput, currentDateFrom, currentDateTo) => {
+    if (currentDateFrom !== "" && currentDateTo !== "") {
+      performDateRangeFilter(updatedUsers, currentDateFrom, currentDateTo, currentSearchInput, false);
+    } else if (currentSearchInput.trim() !== "") {
+      performSearch(updatedUsers, currentSearchInput, false);
+    }
+  };
 
   // Helper function to filter by date range (issued date)
-  const performDateRangeFilter = (dataToFilter, fromDate, toDate, searchTerm) => {
+  const performDateRangeFilter = (dataToFilter, fromDate, toDate, searchTerm, updatePage = true) => {
     let results = [...dataToFilter];
     
     // First apply search filter if exists
@@ -99,42 +107,48 @@ const Records = () => {
     }
     
     // Then apply date range filter based on issued date
-    // Show records where issued date falls within the selected date range (inclusive)
     results = results.filter(user => {
       if (!user.issued) return false;
-      // Check if issued date is within the selected range
       return user.issued >= fromDate && user.issued <= toDate;
     });
     
     setFilteredUsers(results);
     setIsSearchActive(true);
-    setCurrentPage(1);
+    if (updatePage) setCurrentPage(1);
   };
 
   // Helper function to perform search only
-  const performSearch = (dataToSearch, searchTerm) => {
+  const performSearch = (dataToSearch, searchTerm, updatePage = true) => {
     if (!searchTerm || searchTerm.trim() === "") {
       setFilteredUsers([]);
       setIsSearchActive(false);
-      setCurrentPage(1);
+      if (updatePage) setCurrentPage(1);
       return;
     }
     
     const searchLower = searchTerm.toLowerCase();
     const results = dataToSearch.filter(user => {
-      const nameMatch = user.name ? String(user.name).trim().toLowerCase().startsWith(searchLower) : false;
-      const formattedPn = `${user.cType || ""}${user.cType ? "-" : ""}${user.pn || ""}${user.year ? "/" + user.year : ""}`.toLowerCase();
-      const pnMatch = formattedPn ? formattedPn.startsWith(searchLower) : false;
+      const fullName = String(user.name || '').trim().toLowerCase();
+      const nameParts = fullName.split(' ');
+
+      // Match first name, last name, OR any part of the full name
+      const nameMatch = fullName.includes(searchLower) ||
+        nameParts.some(part => part.startsWith(searchLower));
+
+      const formattedPn = `${user.cType || ''}${user.cType ? '-' : ''}${user.pn || ''}${user.year ? '/' + user.year : ''}`.toLowerCase();
+      const pnMatch = formattedPn.startsWith(searchLower);
       const rawPnMatch = user.pn ? String(user.pn).trim().toLowerCase().startsWith(searchLower) : false;
       const cocMatch = user.coc ? String(user.coc).trim().toLowerCase().startsWith(searchLower) : false;
       const orMatch = user.or ? String(user.or).trim().toLowerCase().startsWith(searchLower) : false;
       const plateMatch = user.plate ? String(user.plate).trim().toLowerCase().startsWith(searchLower) : false;
-      return nameMatch || pnMatch || rawPnMatch || cocMatch || orMatch || plateMatch;
+      const addressMatch = user.address ? String(user.address).trim().toLowerCase().includes(searchLower) : false;
+
+      return nameMatch || pnMatch || rawPnMatch || cocMatch || orMatch || plateMatch || addressMatch;
     });
     
     setFilteredUsers(results);
     setIsSearchActive(true);
-    setCurrentPage(1);
+    if (updatePage) setCurrentPage(1);
   };
 
   // Handle FROM date change - just update state
@@ -165,8 +179,6 @@ const Records = () => {
     setIsSearchActive(false);
     setCurrentPage(1);
   };
-
-
 
   // Fetch policies from database on component mount and set up auto-refresh
   useEffect(() => {
@@ -311,32 +323,32 @@ const Records = () => {
     setModalOpen(true);
   };
 
-const openEdit = (user) => {
-  // Strip currency symbols from premium and other charges
-  const premiumNum = parseFloat(user.premium?.toString().replace(/[₱,]/g, '')) || 0;
-  const otherChargesNum = parseFloat(user.otherCharges?.toString().replace(/[₱,]/g, '')) || 0;
-  
-  const initialEdit = { 
-    ...user, 
-    premium: premiumNum,
-    otherCharges: otherChargesNum,
-    // Keep year for payload construction
-    year: user.year,
-    // PRESERVE NULL VALUES - don't convert to "N/A" here
-    // The form will display placeholder text, but the actual data remains null
-    cocNumber: user.cocNumber !== null && user.cocNumber !== undefined ? user.cocNumber : null,
-    orNumber: user.orNumber !== null && user.orNumber !== undefined ? user.orNumber : null,
-    policyNumber: user.policyNumber || user.pn,
-    plateNo: user.plateNo || user.plate,
-    serialChassisNo: user.serialChassisNo || user.chassisNo
+  const openEdit = (user) => {
+    // Strip currency symbols from premium and other charges
+    const premiumNum = parseFloat(user.premium?.toString().replace(/[₱,]/g, '')) || 0;
+    const otherChargesNum = parseFloat(user.otherCharges?.toString().replace(/[₱,]/g, '')) || 0;
+    
+    const initialEdit = { 
+      ...user, 
+      premium: premiumNum,
+      otherCharges: otherChargesNum,
+      // Keep year for payload construction
+      year: user.year,
+      // PRESERVE NULL VALUES - don't convert to "N/A" here
+      // The form will display placeholder text, but the actual data remains null
+      cocNumber: user.cocNumber !== null && user.cocNumber !== undefined ? user.cocNumber : null,
+      orNumber: user.orNumber !== null && user.orNumber !== undefined ? user.orNumber : null,
+      policyNumber: user.policyNumber || user.pn,
+      plateNo: user.plateNo || user.plate,
+      serialChassisNo: user.serialChassisNo || user.chassisNo
+    };
+    
+    setSelectedUser(user);
+    setEditData(initialEdit);
+    setOriginalEditData(JSON.parse(JSON.stringify(initialEdit))); // Deep copy
+    setModalType("edit");
+    setModalOpen(true);
   };
-  
-  setSelectedUser(user);
-  setEditData(initialEdit);
-  setOriginalEditData(JSON.parse(JSON.stringify(initialEdit))); // Deep copy
-  setModalType("edit");
-  setModalOpen(true);
-};
 
   const openDeleteConfirm = (user) => {
     setDeleteConfirmUser(user);
@@ -412,14 +424,19 @@ const openEdit = (user) => {
         }
       }
 
+      const count = selectedRecords.size;
+
       // Update users list by removing deleted records
+      // FIX: also re-apply active filter so search view updates instantly
       setUsers((prev) => {
         const newUsers = prev.filter((u) => !selectedRecords.has(u.id));
+        if (isSearchActive) {
+          reapplyActiveFilter(newUsers, searchInput, dateFrom, dateTo);
+        }
         setCurrentPage((p) => Math.min(p, Math.max(1, Math.ceil(newUsers.length / itemsPerPage))));
         return newUsers;
       });
 
-      const count = selectedRecords.size;
       setToast({ message: `${count} record(s) deleted successfully`, type: 'success' });
       setSelectedRecords(new Set());
       closeModal();
@@ -459,163 +476,168 @@ const openEdit = (user) => {
     }
   };
 
-    const handleSaveEdit = async () => {
-      if (!editData) return;
+  const handleSaveEdit = async () => {
+    if (!editData) return;
+    
+    // Check if anything actually changed
+    const fieldsToCheck = [
+      'assuredName', 'name', 'address', 'cocNumber', 'coc', 'orNumber', 'or',
+      'policyNumber', 'pn', 'cType', 'year', 'issued', 'received',
+      'fromDate', 'toDate', 'model', 'make', 'bodyType', 'color',
+      'mvFileNo', 'plateNo', 'plate', 'serialChassisNo', 'chassisNo', 'motorNo',
+      'premium', 'otherCharges', 'docStamps', 'eVat', 'localGovtTax', 'authFee', 'grandTotal'
+    ];
+    
+    let hasChanges = false;
+    for (let field of fieldsToCheck) {
+      const originalVal = originalEditData?.[field];
+      const currentVal = editData[field];
+      if (originalVal !== currentVal) {
+        hasChanges = true;
+        break;
+      }
+    }
+    
+    if (!hasChanges) {
+      setToast({ message: 'No changes were made', type: 'info' });
+      setModalOpen(false);
+      return;
+    }
+    
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
       
-      // Check if anything actually changed
-      const fieldsToCheck = [
-        'assuredName', 'name', 'address', 'cocNumber', 'coc', 'orNumber', 'or',
-        'policyNumber', 'pn', 'cType', 'year', 'issued', 'received',
-        'fromDate', 'toDate', 'model', 'make', 'bodyType', 'color',
-        'mvFileNo', 'plateNo', 'plate', 'serialChassisNo', 'chassisNo', 'motorNo',
-        'premium', 'otherCharges', 'docStamps', 'eVat', 'localGovtTax', 'authFee', 'grandTotal'
-      ];
+      // Extract numeric values
+      const premiumNum = parseFloat(editData.premium) || 0;
+      const otherChargesNum = parseFloat(editData.otherCharges) || 0;
+      const docStampsNum = parseFloat(editData.docStamps?.toString().replace(/[₱,]/g, '')) || 0;
+      const eVatNum = parseFloat(editData.eVat?.toString().replace(/[₱,]/g, '')) || 0;
+      const localGovtTaxNum = parseFloat(editData.localGovtTax?.toString().replace(/[₱,]/g, '')) || 0;
+      const authFeeNum = parseFloat(editData.authFee?.toString().replace(/[₱,]/g, '')) || 50.40;
+      const totalPremiumNum = parseFloat(editData.grandTotal?.toString().replace(/[₱,]/g, '')) || 0;
       
-      let hasChanges = false;
-      for (let field of fieldsToCheck) {
-        const originalVal = originalEditData?.[field];
-        const currentVal = editData[field];
-        if (originalVal !== currentVal) {
-          hasChanges = true;
-          break;
+      const policyYear = editData.year || parseInt(editData.model?.split(' ')[0]) || new Date().getFullYear();
+      
+      // Helper to trim and keep value
+      const trimValue = (val) => {
+        return String(val || "").trim();
+      };
+      
+      // Helper to return null for empty strings (for optional fields)
+      const nullIfEmpty = (val) => {
+        const trimmed = trimValue(val);
+        return trimmed === "" ? null : trimmed;
+      };
+      
+      const payload = {
+        assured: trimValue(editData.assuredName || editData.name) || "N/A",
+        address: trimValue(editData.address) || "N/A",
+        coc_number: nullIfEmpty(editData.cocNumber),
+        or_number: nullIfEmpty(editData.orNumber),
+        policy_number: trimValue(editData.policyNumber || editData.pn) || "N/A",
+        policy_type: trimValue(editData.cType) || "N/A",
+        policy_year: policyYear,
+        date_issued: editData.issued || "0000-00-00",
+        date_received: editData.received || "0000-00-00",
+        insurance_from_date: editData.fromDate || "0000-00-00",
+        insurance_to_date: editData.toDate || "0000-00-00",
+        model: trimValue(editData.model) || "N/A",
+        make: trimValue(editData.make) || "N/A",
+        body_type: trimValue(editData.bodyType) || "N/A",
+        color: trimValue(editData.color) || "N/A",
+        mv_file_no: nullIfEmpty(editData.mvFileNo),
+        plate_no: nullIfEmpty(editData.plateNo || editData.plate),
+        chassis_no: nullIfEmpty(editData.serialChassisNo || editData.chassisNo),
+        motor_no: nullIfEmpty(editData.motorNo),
+        premium: premiumNum,
+        other_charges: otherChargesNum,
+        doc_stamps: docStampsNum,
+        e_vat: eVatNum,
+        lgt: localGovtTaxNum,
+        auth_fee: authFeeNum,
+        total_premium: totalPremiumNum
+      };
+
+      console.log('Payload being sent:', JSON.stringify(payload, null, 2));
+
+      const username = localStorage.getItem('user');
+      const adminId = localStorage.getItem('adminId');
+      const response = await fetch(`${apiUrl}/policies/${editData.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-username': username,
+          'x-admin-id': adminId
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Backend error response:', errorData);
+        throw new Error(errorData.message || 'Failed to update policy');
+      }
+
+      // Refetch all policies to get latest data from database
+      const fetchResponse = await fetch(`${apiUrl}/policies`, {
+        headers: {
+          'x-username': username,
+          'x-admin-id': adminId
+        }
+      });
+      if (fetchResponse.ok) {
+        const data = await fetchResponse.json();
+        const transformedPolicies = (data.data || []).map(policy => ({
+          id: policy.id,
+          name: policy.assured,
+          assuredName: policy.assured,
+          address: policy.address,
+          policyNumber: policy.policy_number,
+          pn: policy.policy_number,
+          cocNumber: policy.coc_number,
+          coc: policy.coc_number,
+          orNumber: policy.or_number,
+          or: policy.or_number,
+          model: policy.model,
+          fromDate: parseISODate(policy.insurance_from_date),
+          toDate: parseISODate(policy.insurance_to_date),
+          issued: parseISODate(policy.date_issued),
+          received: parseISODate(policy.date_received),
+          make: policy.make,
+          bodyType: policy.body_type,
+          color: policy.color,
+          plateNo: policy.plate_no,
+          plate: policy.plate_no,
+          chassisNo: policy.chassis_no,
+          motorNo: policy.motor_no,
+          mvFileNo: policy.mv_file_no,
+          premium: `₱${parseFloat(policy.premium).toFixed(2)}`,
+          otherCharges: `₱${parseFloat(policy.other_charges).toFixed(2)}`,
+          docStamps: `₱${parseFloat(policy.doc_stamps).toFixed(2)}`,
+          eVat: `₱${parseFloat(policy.e_vat).toFixed(2)}`,
+          localGovtTax: `₱${parseFloat(policy.lgt).toFixed(2)}`,
+          authFee: `₱${parseFloat(policy.auth_fee).toFixed(2)}`,
+          grandTotal: `₱${parseFloat(policy.total_premium).toFixed(2)}`,
+          dateCreated: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          cType: policy.policy_type,
+          year: policy.policy_year,
+          serialChassisNo: policy.chassis_no
+        }));
+        setUsers(transformedPolicies);
+
+        // FIX: re-apply active search/filter on fresh data so table updates instantly
+        if (isSearchActive) {
+          reapplyActiveFilter(transformedPolicies, searchInput, dateFrom, dateTo);
         }
       }
-      
-      if (!hasChanges) {
-        setToast({ message: 'No changes were made', type: 'info' });
-        setModalOpen(false);
-        return;
-      }
-      
-      try {
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-        
-        // Extract numeric values
-        const premiumNum = parseFloat(editData.premium) || 0;
-        const otherChargesNum = parseFloat(editData.otherCharges) || 0;
-        const docStampsNum = parseFloat(editData.docStamps?.toString().replace(/[₱,]/g, '')) || 0;
-        const eVatNum = parseFloat(editData.eVat?.toString().replace(/[₱,]/g, '')) || 0;
-        const localGovtTaxNum = parseFloat(editData.localGovtTax?.toString().replace(/[₱,]/g, '')) || 0;
-        const authFeeNum = parseFloat(editData.authFee?.toString().replace(/[₱,]/g, '')) || 50.40;
-        const totalPremiumNum = parseFloat(editData.grandTotal?.toString().replace(/[₱,]/g, '')) || 0;
-        
-        const policyYear = editData.year || parseInt(editData.model?.split(' ')[0]) || new Date().getFullYear();
-        
-        // Helper to trim and keep value
-        const trimValue = (val) => {
-          return String(val || "").trim();
-        };
-        
-        // Helper to return null for empty strings (for optional fields)
-        const nullIfEmpty = (val) => {
-          const trimmed = trimValue(val);
-          return trimmed === "" ? null : trimmed;
-        };
-        
-        const payload = {
-          assured: trimValue(editData.assuredName || editData.name) || "N/A",
-          address: trimValue(editData.address) || "N/A",
-          coc_number: nullIfEmpty(editData.cocNumber),
-          or_number: nullIfEmpty(editData.orNumber),
-          policy_number: trimValue(editData.policyNumber || editData.pn) || "N/A",
-          policy_type: trimValue(editData.cType) || "N/A",
-          policy_year: policyYear,
-          date_issued: editData.issued || "0000-00-00",
-          date_received: editData.received || "0000-00-00",
-          insurance_from_date: editData.fromDate || "0000-00-00",
-          insurance_to_date: editData.toDate || "0000-00-00",
-          model: trimValue(editData.model) || "N/A",
-          make: trimValue(editData.make) || "N/A",
-          body_type: trimValue(editData.bodyType) || "N/A",
-          color: trimValue(editData.color) || "N/A",
-          mv_file_no: nullIfEmpty(editData.mvFileNo),
-          plate_no: nullIfEmpty(editData.plateNo || editData.plate),
-          chassis_no: nullIfEmpty(editData.serialChassisNo || editData.chassisNo),
-          motor_no: nullIfEmpty(editData.motorNo),
-          premium: premiumNum,
-          other_charges: otherChargesNum,
-          doc_stamps: docStampsNum,
-          e_vat: eVatNum,
-          lgt: localGovtTaxNum,
-          auth_fee: authFeeNum,
-          total_premium: totalPremiumNum
-        };
 
-        console.log('Payload being sent:', JSON.stringify(payload, null, 2));
-
-        const username = localStorage.getItem('user');
-        const adminId = localStorage.getItem('adminId');
-        const response = await fetch(`${apiUrl}/policies/${editData.id}`, {
-          method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-username': username,
-            'x-admin-id': adminId
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Backend error response:', errorData);
-          throw new Error(errorData.message || 'Failed to update policy');
-        }
-
-        // Refetch all policies to get latest data from database
-        const fetchResponse = await fetch(`${apiUrl}/policies`, {
-          headers: {
-            'x-username': username,
-            'x-admin-id': adminId
-          }
-        });
-        if (fetchResponse.ok) {
-          const data = await fetchResponse.json();
-          const transformedPolicies = (data.data || []).map(policy => ({
-            id: policy.id,
-            name: policy.assured,
-            assuredName: policy.assured,
-            address: policy.address,
-            policyNumber: policy.policy_number,
-            pn: policy.policy_number,
-            cocNumber: policy.coc_number,
-            coc: policy.coc_number,
-            orNumber: policy.or_number,
-            or: policy.or_number,
-            model: policy.model,
-            fromDate: parseISODate(policy.insurance_from_date),
-            toDate: parseISODate(policy.insurance_to_date),
-            issued: parseISODate(policy.date_issued),
-            received: parseISODate(policy.date_received),
-            make: policy.make,
-            bodyType: policy.body_type,
-            color: policy.color,
-            plateNo: policy.plate_no,
-            plate: policy.plate_no,
-            chassisNo: policy.chassis_no,
-            motorNo: policy.motor_no,
-            mvFileNo: policy.mv_file_no,
-            premium: `₱${parseFloat(policy.premium).toFixed(2)}`,
-            otherCharges: `₱${parseFloat(policy.other_charges).toFixed(2)}`,
-            docStamps: `₱${parseFloat(policy.doc_stamps).toFixed(2)}`,
-            eVat: `₱${parseFloat(policy.e_vat).toFixed(2)}`,
-            localGovtTax: `₱${parseFloat(policy.lgt).toFixed(2)}`,
-            authFee: `₱${parseFloat(policy.auth_fee).toFixed(2)}`,
-            grandTotal: `₱${parseFloat(policy.total_premium).toFixed(2)}`,
-            dateCreated: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            cType: policy.policy_type,
-            year: policy.policy_year,
-            serialChassisNo: policy.chassis_no
-          }));
-          setUsers(transformedPolicies);
-        }
-
-        setToast({ message: 'Record updated successfully!', type: 'success' });
-        closeModal();
-      } catch (error) {
-        console.error('Error updating policy:', error);
-        setToast({ message: `Failed to update record: ${error.message}`, type: 'error' });
-      }
-    };
+      setToast({ message: 'Record updated successfully!', type: 'success' });
+      closeModal();
+    } catch (error) {
+      console.error('Error updating policy:', error);
+      setToast({ message: `Failed to update record: ${error.message}`, type: 'error' });
+    }
+  };
 
   const confirmDelete = async () => {
     if (!deleteConfirmUser) return;
@@ -638,8 +660,12 @@ const openEdit = (user) => {
       }
 
       const deletedName = deleteConfirmUser.name;
+      // FIX: also re-apply active filter so search view updates instantly
       setUsers((prev) => {
         const newUsers = prev.filter((u) => u.id !== deleteConfirmUser.id);
+        if (isSearchActive) {
+          reapplyActiveFilter(newUsers, searchInput, dateFrom, dateTo);
+        }
         setCurrentPage((p) => Math.min(p, Math.max(1, Math.ceil(newUsers.length / itemsPerPage))));
         return newUsers;
       });
@@ -905,11 +931,11 @@ const openEdit = (user) => {
       
       worksheet[cellAddress].s = {
         fill: {
-          fgColor: { rgb: "1E6B47" } // Green background matching your theme
+          fgColor: { rgb: "1E6B47" }
         },
         font: {
           bold: true,
-          color: { rgb: "FFFFFF" }, // White text
+          color: { rgb: "FFFFFF" },
           sz: 12,
           name: "Calibri"
         },
@@ -937,7 +963,7 @@ const openEdit = (user) => {
         
         worksheet[cellAddress].s = {
           fill: {
-            fgColor: { rgb: isEvenRow ? "F3F4F6" : "FFFFFF" } // Alternating light gray and white
+            fgColor: { rgb: isEvenRow ? "F3F4F6" : "FFFFFF" }
           },
           font: {
             sz: 11,
@@ -945,7 +971,7 @@ const openEdit = (user) => {
             name: "Calibri"
           },
           alignment: {
-            horizontal: col === 0 || col === 1 ? "left" : "center", // Left align name and address
+            horizontal: col === 0 || col === 1 ? "left" : "center",
             vertical: "center",
             wrapText: true
           },
@@ -957,18 +983,15 @@ const openEdit = (user) => {
           }
         };
 
-        // Bold the Assured Name (col 0) and Grand Total (col 19) columns
         if (col === 0 || col === 19) {
           worksheet[cellAddress].s.font.bold = true;
           worksheet[cellAddress].s.font.sz = 11;
         }
 
-        // Highlight Grand Total column with light green background
         if (col === 19) {
           worksheet[cellAddress].s.fill.fgColor = { rgb: "D1FAE5" };
         }
 
-        // Highlight Premium column with light yellow background
         if (col === 13) {
           worksheet[cellAddress].s.fill.fgColor = { rgb: "FEF3C7" };
         }
@@ -977,9 +1000,9 @@ const openEdit = (user) => {
 
     // Set row heights for better appearance
     worksheet["!rows"] = [];
-    worksheet["!rows"][0] = { hpt: 30 }; // Header row height
+    worksheet["!rows"][0] = { hpt: 30 };
     for (let i = 1; i <= range.e.r; i++) {
-      worksheet["!rows"][i] = { hpt: 22 }; // Data row height
+      worksheet["!rows"][i] = { hpt: 22 };
     }
 
     // Add autofilter to header row
@@ -1038,8 +1061,6 @@ const openEdit = (user) => {
                 <p style={{fontSize: '12px', color: '#1E6B47', margin: 0, fontWeight: 500}}>Motor Car Insurance · View and manage all policies</p>
               </div>
             </div>
-
-
           </div>
         </div>
       </div>
@@ -1246,6 +1267,7 @@ const openEdit = (user) => {
           )}
         </div>
         <div className="top-right" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {/* FIX: Dynamic label — changes based on how many records are selected */}
           {selectedRecords.size > 0 && (
             <button 
               className="btn bulk-delete-btn" 
@@ -1264,11 +1286,16 @@ const openEdit = (user) => {
                 cursor: "pointer",
                 transition: "all 0.3s"
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = "#dc2626"}
-              onMouseLeave={(e) => e.target.style.backgroundColor = "#ef4444"}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#dc2626"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#ef4444"}
               title={`Delete ${selectedRecords.size} selected record(s)`}
             >
-              <FiTrash2 size={18} /> Delete All
+              <FiTrash2 size={18} />
+              {selectedRecords.size === 1
+                ? "Delete (1)"
+                : selectedRecords.size === displayUsers.length && displayUsers.length > 0
+                ? "Delete All"
+                : `Delete (${selectedRecords.size})`}
             </button>
           )}
           <button 
@@ -1288,8 +1315,8 @@ const openEdit = (user) => {
               cursor: "pointer",
               transition: "all 0.3s"
             }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = "#059669"}
-            onMouseLeave={(e) => e.target.style.backgroundColor = "#10B981"}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#059669"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#10B981"}
             title="Export to Excel"
           >
             <FiDownload size={18} /> Excel
@@ -1725,85 +1752,88 @@ const openEdit = (user) => {
         </div>
       )}
 
+      {/* FIX: Bulk delete modal with dynamic title, message, and confirm button label */}
       {modalOpen && modalType === "bulkDelete" && (
         <div style={premiumModalBackdrop}>
           <div style={{
             ...premiumModal,
             width: "90%",
-            maxWidth: "500px",
-            maxHeight: "auto"
+            maxWidth: "480px",
           }} onClick={(e) => e.stopPropagation()}>
             <div style={premiumModalHeader}>
               <div className="modal-header-decoration"></div>
               <h3 style={premiumModalTitle}>
-                <FiTrash2 size={30} />
-                Bulk Delete Records
+                <FiTrash2 size={26} />
+                {selectedRecords.size === 1
+                  ? "Delete Record"
+                  : selectedRecords.size === displayUsers.length
+                  ? "Delete All Records"
+                  : `Delete ${selectedRecords.size} Records`}
               </h3>
             </div>
 
             <div style={premiumModalBody}>
-              <div style={{ textAlign: "center", padding: "20px 16px" }}>
+              <div style={{ textAlign: "center", padding: "16px" }}>
                 <div style={{
-                  ...iconBadge,
+                  width: "72px",
+                  height: "72px",
+                  borderRadius: "50%",
                   backgroundColor: "#fee2e2",
-                  color: "#dc2626",
-                  margin: "0 auto 16px"
-                }}
-                className="icon-badge-pulse">
-                  <FiTrash2 size={24} />
-                </div>
-                <h4 style={{ 
-                  fontSize: "18px", 
-                  fontWeight: "700", 
-                  color: "#111827",
-                  marginBottom: "10px" 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 20px",
+                  animation: "pulse 2s infinite"
                 }}>
-                  Confirm Bulk Deletion
+                  <FiTrash2 size={32} color="#dc2626" />
+                </div>
+
+                <h4 style={{ fontSize: "18px", fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
+                  {selectedRecords.size === 1
+                    ? "Delete this record?"
+                    : selectedRecords.size === displayUsers.length
+                    ? "Delete ALL records?"
+                    : `Delete these ${selectedRecords.size} records?`}
                 </h4>
-                <p style={{ 
-                  fontSize: "0.9em",
-                  color: "#6b7280", 
-                  marginBottom: "12px",
-                  lineHeight: "1.5"
-                }}>
-                  You are about to permanently delete
+
+                <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px", lineHeight: "1.6" }}>
+                  {selectedRecords.size === 1
+                    ? "This record will be permanently removed from the database."
+                    : selectedRecords.size === displayUsers.length
+                    ? `All ${displayUsers.length} records will be permanently removed. This will wipe the entire database.`
+                    : `${selectedRecords.size} selected records will be permanently removed from the database.`}
                 </p>
+
                 <div style={{
-                  padding: "16px",
-                  backgroundColor: "#f9fafb",
-                  borderRadius: "8px",
-                  margin: "12px 0",
-                  border: "1px solid #e5e7eb"
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 20px",
+                  backgroundColor: "#fef2f2",
+                  border: "2px solid #fecaca",
+                  borderRadius: "10px",
+                  marginBottom: "16px"
                 }}>
-                  <p style={{
-                    fontSize: "24px",
-                    fontWeight: "700",
-                    color: "#ef4444",
-                    margin: 0
-                  }}>
-                    {selectedRecords.size} record(s)
-                  </p>
+                  <FiTrash2 size={16} color="#dc2626" />
+                  <span style={{ fontSize: "16px", fontWeight: "700", color: "#dc2626" }}>
+                    {selectedRecords.size} record{selectedRecords.size !== 1 ? "s" : ""} selected
+                  </span>
                 </div>
+
                 <div style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "6px",
-                  padding: "10px 14px",
+                  gap: "8px",
+                  padding: "10px 16px",
                   backgroundColor: "#fef3c7",
                   border: "1px solid #fbbf24",
-                  borderRadius: "8px",
-                  marginTop: "14px"
+                  borderRadius: "8px"
                 }}>
                   <FiAlertCircle size={16} color="#92400e" />
-                  <p style={{ 
-                    fontSize: "13px",
-                    color: "#92400e",
-                    margin: 0,
-                    fontWeight: "600"
-                  }}>
+                  <span style={{ fontSize: "13px", color: "#92400e", fontWeight: "600" }}>
                     This action cannot be undone
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>
@@ -1822,7 +1852,11 @@ const openEdit = (user) => {
                 onClick={confirmBulkDelete}
               >
                 <FiTrash2 size={16} />
-                Delete All
+                {selectedRecords.size === 1
+                  ? "Delete Record"
+                  : selectedRecords.size === displayUsers.length
+                  ? "Delete All"
+                  : `Delete ${selectedRecords.size} Records`}
               </button>
             </div>
           </div>

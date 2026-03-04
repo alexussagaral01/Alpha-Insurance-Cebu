@@ -1395,7 +1395,7 @@ function Menu() {
                       Calculated Charges
                     </h4>
                   </div>
-                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px'}}>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: '12px'}}>
                     <div style={{
                       padding: '12px', 
                       backgroundColor: 'rgba(248, 250, 252, 0.8)', 
@@ -1719,6 +1719,15 @@ function Menu() {
         }}>
           <p style={{fontSize: '10px', color: '#5A8C3A', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0'}}>Policy #</p>
           <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>{formData.policyNumber || '-'}</p>
+        </div>
+        <div style={{
+          padding: '12px', 
+          backgroundColor: 'rgba(248, 250, 252, 0.8)', 
+          borderRadius: '8px', 
+          border: '3px solid #a7d49b'
+        }}>
+          <p style={{fontSize: '10px', color: '#5A8C3A', textTransform: 'uppercase', fontWeight: '600', margin: '0 0 4px 0'}}>Year</p>
+          <p style={{fontSize: '14px', fontWeight: '600', color: '#1a3a0f', margin: 0}}>{formData.year || '-'}</p>
         </div>
         <div style={{
           padding: '12px', 
