@@ -45,7 +45,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.assuredName || ""} 
-                onChange={(e) => onEditChange("assuredName", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("assuredName", e.target.value)} 
                 placeholder="Enter assured name"
               />
             </div>
@@ -58,7 +58,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.address || ""} 
-                onChange={(e) => onEditChange("address", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("address", e.target.value)} 
                 placeholder="Enter address"
               />
             </div>
@@ -82,7 +82,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.policyNumber || ""} 
-                onChange={(e) => onEditChange("policyNumber", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("policyNumber", e.target.value)} 
                 placeholder="POL-XXXX"
               />
             </div>
@@ -96,7 +96,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.cocNumber || ""} 
-                onChange={(e) => onEditChange("cocNumber", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("cocNumber", e.target.value)} 
                 placeholder="COC-XXXX"
               />
             </div>
@@ -110,7 +110,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.orNumber || ""} 
-                onChange={(e) => onEditChange("orNumber", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("orNumber", e.target.value)} 
                 placeholder="OR-XXXX"
               />
             </div>
@@ -124,7 +124,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.cType || ""}
-                onChange={(e) => onEditChange("cType", e.target.value.toUpperCase())}
+                onChange={(e) => onEditChange("cType", e.target.value)}
               >
                 <option value="">Select Type</option>
                 <option value="MC-CTPL-CEB">MC-CTPL-CEB</option>
@@ -142,7 +142,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.year || ""} 
-                onChange={(e) => onEditChange("year", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("year", e.target.value)} 
                 placeholder="e.g., 2025"
               />
             </div>
@@ -259,7 +259,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.make || ""} 
-                onChange={(e) => onEditChange("make", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("make", e.target.value)} 
                 placeholder="TOYOTA"
               />
             </div>
@@ -272,7 +272,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.model || ""} 
-                onChange={(e) => onEditChange("model", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("model", e.target.value)} 
                 placeholder="CAMRY"
               />
             </div>
@@ -285,7 +285,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.bodyType || ""} 
-                onChange={(e) => onEditChange("bodyType", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("bodyType", e.target.value)} 
                 placeholder="SEDAN"
               />
             </div>
@@ -298,7 +298,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.color || ""} 
-                onChange={(e) => onEditChange("color", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("color", e.target.value)} 
                 placeholder="SILVER"
               />
             </div>
@@ -311,7 +311,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.plateNo || editData.plate || ""} 
-                onChange={(e) => onEditChange("plateNo", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("plateNo", e.target.value)} 
                 placeholder="ABC-001"
               />
             </div>
@@ -324,7 +324,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.serialChassisNo || editData.chassisNo || ""} 
-                onChange={(e) => onEditChange("serialChassisNo", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("serialChassisNo", e.target.value)} 
                 placeholder="CH123456789"
               />
             </div>
@@ -337,7 +337,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.motorNo || ""} 
-                onChange={(e) => onEditChange("motorNo", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("motorNo", e.target.value)} 
                 placeholder="MOT987654321"
               />
             </div>
@@ -350,7 +350,7 @@ const EditModal = ({ editData, onEditChange, onSave, onCancel, premiumModalBackd
                 style={{...premiumInput, textTransform: "uppercase"}}
                 className="premium-input"
                 value={editData.mvFileNo || ""} 
-                onChange={(e) => onEditChange("mvFileNo", e.target.value.toUpperCase())} 
+                onChange={(e) => onEditChange("mvFileNo", e.target.value)} 
                 placeholder="MV2025001"
               />
             </div>

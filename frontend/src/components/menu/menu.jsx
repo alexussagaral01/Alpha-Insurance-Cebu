@@ -1395,9 +1395,9 @@ function Menu() {
                       Calculated Charges
                     </h4>
                   </div>
-                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: '12px'}}>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px'}}>
                     <div style={{
-                      padding: '12px', 
+                      padding: '10px', 
                       backgroundColor: 'rgba(248, 250, 252, 0.8)', 
                       borderRadius: '8px', 
                       border: '3px solid #a7d49b'
@@ -1414,7 +1414,7 @@ function Menu() {
                       />
                     </div>
                     <div style={{
-                      padding: '12px', 
+                      padding: '10px', 
                       backgroundColor: 'rgba(248, 250, 252, 0.8)', 
                       borderRadius: '8px', 
                       border: '3px solid #a7d49b'
@@ -1431,7 +1431,7 @@ function Menu() {
                       />
                     </div>
                     <div style={{
-                      padding: '12px', 
+                      padding: '10px', 
                       backgroundColor: 'rgba(248, 250, 252, 0.8)', 
                       borderRadius: '8px', 
                       border: '3px solid #a7d49b'
@@ -1448,7 +1448,7 @@ function Menu() {
                       />
                     </div>
                     <div style={{
-                      padding: '12px', 
+                      padding: '10px', 
                       backgroundColor: 'rgba(248, 250, 252, 0.8)', 
                       borderRadius: '8px', 
                       border: '3px solid #a7d49b'

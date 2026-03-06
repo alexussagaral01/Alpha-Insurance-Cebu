@@ -683,7 +683,7 @@ const Records = () => {
     top: 0,
     backgroundColor: "#1e6b47",
     color: "#ffffff",
-    padding: "18px 16px",
+    padding: "12px 10px",
     fontSize: "14px",
     fontWeight: "600",
     textTransform: "uppercase",

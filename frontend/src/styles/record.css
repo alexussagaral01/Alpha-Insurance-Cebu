@@ -1063,14 +1063,14 @@ tbody tr:hover {
   box-shadow: var(--shadow-2);
 }
 tbody td {
-  padding: 14px 12px;
+  padding: 10px 8px;
   border: none;
   vertical-align: middle;
 }
 
 /* Make each row render as a "card" visually — adjust cell backgrounds so rounded corners show */
-tbody tr td:first-child { padding-left: 20px; }
-tbody tr td:last-child { padding-right: 20px; }
+tbody tr td:first-child { padding-left: 12px; }
+tbody tr td:last-child { padding-right: 12px; }
 
 /* Action icons are already modern; tweak spacing and focus styles */
 .action-btn {
