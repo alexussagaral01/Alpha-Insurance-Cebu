@@ -415,6 +415,7 @@ td {
   white-space: normal; /* allow wrapping */
   overflow-wrap: anywhere;
   font-size: 12px;
+  text-transform: uppercase;
 }
 
 tbody tr {

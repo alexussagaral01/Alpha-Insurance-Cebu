@@ -159,16 +159,38 @@ router.post('/', async (req, res) => {
 // READ - Get all policies
 router.get('/', async (req, res) => {
   try {
+    // OPTIMIZED: Add pagination support to prevent socket timeout on large datasets
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 500; // Default 500 per page
+    const offset = (page - 1) * limit;
+
+    // Fetch total count for pagination info
+    const { count: totalCount, error: countError } = await supabase
+      .from('insurance_policies')
+      .select('id', { count: 'exact', head: true });
+
+    if (countError && countError.code !== 'PGRST116') {
+      throw countError;
+    }
+
+    // Fetch paginated data
     const { data, error } = await supabase
       .from('insurance_policies')
       .select('id, assured, address, coc_number, or_number, policy_number, policy_type, policy_year, date_issued, date_received, insurance_from_date, insurance_to_date, model, make, body_type, color, mv_file_no, plate_no, chassis_no, motor_no, premium, other_charges, auth_fee, doc_stamps, e_vat, lgt, total_premium, created_at, updated_at')
-      .order('id', { ascending: false });
+      .order('id', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
     res.json({
       success: true,
-      data: formatDateFields(data || [])
+      data: formatDateFields(data || []),
+      pagination: {
+        page,
+        limit,
+        total: totalCount || 0,
+        pages: Math.ceil((totalCount || 0) / limit)
+      }
     });
   } catch (error) {
     console.error('Error fetching policies:', error);

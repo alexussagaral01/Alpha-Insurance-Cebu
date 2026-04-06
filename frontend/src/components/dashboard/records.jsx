@@ -76,6 +76,7 @@ const Records = () => {
   
   // Bulk selection states
   const [selectedRecords, setSelectedRecords] = useState(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // FIX: Re-applies whichever filter/search is currently active on a given dataset.
   // Called after edit/delete so the table updates instantly without a page refresh.
@@ -178,6 +179,7 @@ const Records = () => {
     setFilteredUsers([]);
     setIsSearchActive(false);
     setCurrentPage(1);
+    setSelectedRecords(new Set());
   };
 
   // Fetch policies from database on component mount and set up auto-refresh
@@ -188,20 +190,37 @@ const Records = () => {
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
         const username = localStorage.getItem('user');
         const adminId = localStorage.getItem('adminId');
-        const response = await fetch(`${apiUrl}/policies`, {
-          headers: {
-            'x-username': username,
-            'x-admin-id': adminId
-          }
-        });
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch policies: ${response.statusText}`);
-        }
+        // OPTIMIZED: Fetch all records in pages to avoid socket timeout
+        let allPolicies = [];
+        let page = 1;
+        let totalPages = 1;
+        
+        while (page <= totalPages) {
+          const response = await fetch(`${apiUrl}/policies?page=${page}&limit=500`, {
+            headers: {
+              'x-username': username,
+              'x-admin-id': adminId
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch policies: ${response.statusText}`);
+          }
 
-        const data = await response.json();
-        const transformedPolicies = (data.data || []).map(transformPolicy);
-        setUsers(transformedPolicies);
+          const data = await response.json();
+          const transformedPolicies = (data.data || []).map(transformPolicy);
+          allPolicies = [...allPolicies, ...transformedPolicies];
+          
+          // Update total pages from pagination info
+          if (data.pagination) {
+            totalPages = data.pagination.pages;
+          }
+          
+          page++;
+        }
+        
+        setUsers(allPolicies);
       } catch (error) {
         console.error('Error fetching policies:', error);
       }
@@ -362,6 +381,8 @@ const Records = () => {
     setSelectedUser(null);
     setEditData(null);
     setDeleteConfirmUser(null);
+    setSelectedRecords(new Set());
+    setIsDeleting(false);
   };
 
   // Bulk selection handlers
@@ -396,8 +417,8 @@ const Records = () => {
   };
 
   const confirmBulkDelete = async () => {
-    if (selectedRecords.size === 0) return;
-
+    if (selectedRecords.size === 0 || isDeleting) return;
+    setIsDeleting(true);
     try {
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
       const username = localStorage.getItem('user');
@@ -443,6 +464,9 @@ const Records = () => {
     } catch (error) {
       console.error('Error bulk deleting policies:', error);
       setToast({ message: `Failed to delete records: ${error.message}`, type: 'error' });
+      closeModal();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -578,58 +602,51 @@ const Records = () => {
         throw new Error(errorData.message || 'Failed to update policy');
       }
 
-      // Refetch all policies to get latest data from database
-      const fetchResponse = await fetch(`${apiUrl}/policies`, {
-        headers: {
-          'x-username': username,
-          'x-admin-id': adminId
-        }
-      });
-      if (fetchResponse.ok) {
-        const data = await fetchResponse.json();
-        const transformedPolicies = (data.data || []).map(policy => ({
-          id: policy.id,
-          name: policy.assured,
-          assuredName: policy.assured,
-          address: policy.address,
-          policyNumber: policy.policy_number,
-          pn: policy.policy_number,
-          cocNumber: policy.coc_number,
-          coc: policy.coc_number,
-          orNumber: policy.or_number,
-          or: policy.or_number,
-          model: policy.model,
-          fromDate: parseISODate(policy.insurance_from_date),
-          toDate: parseISODate(policy.insurance_to_date),
-          issued: parseISODate(policy.date_issued),
-          received: parseISODate(policy.date_received),
-          make: policy.make,
-          bodyType: policy.body_type,
-          color: policy.color,
-          plateNo: policy.plate_no,
-          plate: policy.plate_no,
-          chassisNo: policy.chassis_no,
-          motorNo: policy.motor_no,
-          mvFileNo: policy.mv_file_no,
-          premium: `₱${parseFloat(policy.premium).toFixed(2)}`,
-          otherCharges: `₱${parseFloat(policy.other_charges).toFixed(2)}`,
-          docStamps: `₱${parseFloat(policy.doc_stamps).toFixed(2)}`,
-          eVat: `₱${parseFloat(policy.e_vat).toFixed(2)}`,
-          localGovtTax: `₱${parseFloat(policy.lgt).toFixed(2)}`,
-          authFee: `₱${parseFloat(policy.auth_fee).toFixed(2)}`,
-          grandTotal: `₱${parseFloat(policy.total_premium).toFixed(2)}`,
-          dateCreated: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-          cType: policy.policy_type,
-          year: policy.policy_year,
-          serialChassisNo: policy.chassis_no
-        }));
-        setUsers(transformedPolicies);
+      // ⚡ OPTIMIZED: Update local state immediately with the edited record (no refetch)
+      const updatedRecord = {
+        id: editData.id,
+        name: editData.assuredName || editData.name,
+        assuredName: editData.assuredName || editData.name,
+        address: editData.address,
+        policyNumber: editData.policyNumber || editData.pn,
+        pn: editData.policyNumber || editData.pn,
+        cocNumber: editData.cocNumber || editData.coc,
+        coc: editData.cocNumber || editData.coc,
+        orNumber: editData.orNumber || editData.or,
+        or: editData.orNumber || editData.or,
+        model: editData.model,
+        fromDate: editData.fromDate,
+        toDate: editData.toDate,
+        issued: editData.issued,
+        received: editData.received,
+        make: editData.make,
+        bodyType: editData.bodyType,
+        color: editData.color,
+        plateNo: editData.plateNo || editData.plate,
+        plate: editData.plateNo || editData.plate,
+        chassisNo: editData.serialChassisNo || editData.chassisNo,
+        motorNo: editData.motorNo,
+        mvFileNo: editData.mvFileNo,
+        premium: editData.premium,
+        otherCharges: editData.otherCharges,
+        docStamps: editData.docStamps,
+        eVat: editData.eVat,
+        localGovtTax: editData.localGovtTax,
+        authFee: editData.authFee,
+        grandTotal: editData.grandTotal,
+        cType: editData.cType,
+        year: editData.year,
+        serialChassisNo: editData.serialChassisNo
+      };
 
-        // FIX: re-apply active search/filter on fresh data so table updates instantly
+      // Update local state with the edited record
+      setUsers((prev) => {
+        const newUsers = prev.map(u => u.id === editData.id ? updatedRecord : u);
         if (isSearchActive) {
-          reapplyActiveFilter(transformedPolicies, searchInput, dateFrom, dateTo);
+          reapplyActiveFilter(newUsers, searchInput, dateFrom, dateTo);
         }
-      }
+        return newUsers;
+      });
 
       setToast({ message: 'Record updated successfully!', type: 'success' });
       closeModal();
@@ -640,8 +657,8 @@ const Records = () => {
   };
 
   const confirmDelete = async () => {
-    if (!deleteConfirmUser) return;
-    
+    if (!deleteConfirmUser || isDeleting) return;
+    setIsDeleting(true);
     try {
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
       const username = localStorage.getItem('user');
@@ -674,6 +691,9 @@ const Records = () => {
     } catch (error) {
       console.error('Error deleting policy:', error);
       setToast({ message: `Failed to delete record: ${error.message}`, type: 'error' });
+      closeModal();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -789,7 +809,8 @@ const Records = () => {
     border: "2px solid #e5e7eb",
     fontWeight: "500",
     boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-    transition: "all 0.2s ease"
+    transition: "all 0.2s ease",
+    textTransform: "uppercase"
   };
 
   const premiumInput = {
@@ -924,7 +945,7 @@ const Records = () => {
     // Get the range of the worksheet
     const range = XLSX.utils.decode_range(worksheet['!ref']);
     
-    // Style the header row (row 0) with green background
+    // OPTIMIZED: Only style header row for large exports to avoid timeout
     for (let col = range.s.c; col <= range.e.c; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
       if (!worksheet[cellAddress]) continue;
@@ -953,47 +974,50 @@ const Records = () => {
       };
     }
 
-    // Style data rows with alternating colors
-    for (let row = range.s.r + 1; row <= range.e.r; row++) {
-      const isEvenRow = (row - 1) % 2 === 0;
-      
-      for (let col = range.s.c; col <= range.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!worksheet[cellAddress]) continue;
+    // OPTIMIZED: Skip individual cell styling for large datasets (>1000 rows) for performance
+    if (range.e.r - range.s.r <= 1000) {
+      // Style data rows with alternating colors for small-medium exports
+      for (let row = range.s.r + 1; row <= range.e.r; row++) {
+        const isEvenRow = (row - 1) % 2 === 0;
         
-        worksheet[cellAddress].s = {
-          fill: {
-            fgColor: { rgb: isEvenRow ? "F3F4F6" : "FFFFFF" }
-          },
-          font: {
-            sz: 11,
-            color: { rgb: "000000" },
-            name: "Calibri"
-          },
-          alignment: {
-            horizontal: col === 0 || col === 1 ? "left" : "center",
-            vertical: "center",
-            wrapText: true
-          },
-          border: {
-            top: { style: "thin", color: { rgb: "E5E7EB" } },
-            bottom: { style: "thin", color: { rgb: "E5E7EB" } },
-            left: { style: "thin", color: { rgb: "E5E7EB" } },
-            right: { style: "thin", color: { rgb: "E5E7EB" } }
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          if (!worksheet[cellAddress]) continue;
+          
+          worksheet[cellAddress].s = {
+            fill: {
+              fgColor: { rgb: isEvenRow ? "F3F4F6" : "FFFFFF" }
+            },
+            font: {
+              sz: 11,
+              color: { rgb: "000000" },
+              name: "Calibri"
+            },
+            alignment: {
+              horizontal: col === 0 || col === 1 ? "left" : "center",
+              vertical: "center",
+              wrapText: true
+            },
+            border: {
+              top: { style: "thin", color: { rgb: "E5E7EB" } },
+              bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+              left: { style: "thin", color: { rgb: "E5E7EB" } },
+              right: { style: "thin", color: { rgb: "E5E7EB" } }
+            }
+          };
+
+          if (col === 0 || col === 19) {
+            worksheet[cellAddress].s.font.bold = true;
+            worksheet[cellAddress].s.font.sz = 11;
           }
-        };
 
-        if (col === 0 || col === 19) {
-          worksheet[cellAddress].s.font.bold = true;
-          worksheet[cellAddress].s.font.sz = 11;
-        }
+          if (col === 19) {
+            worksheet[cellAddress].s.fill.fgColor = { rgb: "D1FAE5" };
+          }
 
-        if (col === 19) {
-          worksheet[cellAddress].s.fill.fgColor = { rgb: "D1FAE5" };
-        }
-
-        if (col === 13) {
-          worksheet[cellAddress].s.fill.fgColor = { rgb: "FEF3C7" };
+          if (col === 13) {
+            worksheet[cellAddress].s.fill.fgColor = { rgb: "FEF3C7" };
+          }
         }
       }
     }
@@ -1009,7 +1033,7 @@ const Records = () => {
     worksheet["!autofilter"] = { ref: `A1:T1` };
 
     XLSX.writeFile(workbook, `Alpha_Insurance_Records_${new Date().toISOString().split('T')[0]}.xlsx`);
-    setToast({ message: 'Excel file with formatting exported successfully!', type: 'success' });
+    setToast({ message: 'Excel file exported successfully!', type: 'success' });
   };
 
   // Loading state
@@ -1538,6 +1562,8 @@ const Records = () => {
             <option value={50}>50</option>
             <option value={100}>100</option>
             <option value={1000}>1000</option>
+            <option value={3000}>3000</option>
+            <option value={5000}>5000</option>
           </select>
         </div>
 
@@ -1702,7 +1728,8 @@ const Records = () => {
                     fontSize: "15px",
                     fontWeight: "700",
                     color: "#111827",
-                    margin: 0
+                    margin: 0,
+                    textTransform: "uppercase"
                   }}>
                     {deleteConfirmUser.name}
                   </p>
