@@ -3,13 +3,239 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #1e6b47;
-  background-image: 
-    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+  background: #1e6b47;
   font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
+/* ============ ANIMATED BACKGROUND ============ */
+.animated-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============ AURORA SHIMMER ============ */
+@keyframes auroraShimmer {
+  0% {
+    background: radial-gradient(ellipse at 50% 0%, rgba(76, 175, 80, 0.15) 0%, transparent 70%);
+    filter: blur(40px);
+  }
+  50% {
+    background: radial-gradient(ellipse at 50% 0%, rgba(100, 200, 120, 0.2) 0%, transparent 70%);
+    filter: blur(50px);
+  }
+  100% {
+    background: radial-gradient(ellipse at 50% 0%, rgba(76, 175, 80, 0.15) 0%, transparent 70%);
+    filter: blur(40px);
+  }
+}
+
+.aurora {
+  position: absolute;
+  top: -20%;
+  left: 0;
+  width: 100%;
+  height: 60%;
+  animation: auroraShimmer 8s ease-in-out infinite;
+}
+
+/* ============ TWINKLING STARS ============ */
+.stars-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+  animation: twinkle infinite ease-in-out;
+}
+
+/* ============ MOON & GLOW ============ */
+.moon-container {
+  position: absolute;
+  top: 10%;
+  right: 10%;
+  z-index: 2;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+@keyframes moonGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(200, 200, 150, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(200, 200, 150, 0.6);
+  }
+}
+
+.moon {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle at 35% 35%, #ffffff, #f0f0e0);
+  border-radius: 50%;
+  box-shadow: inset -3px -3px 10px rgba(0, 0, 0, 0.3);
+  animation: moonGlow 4s ease-in-out infinite;
+  position: relative;
+}
+
+.moon::before {
+  content: '';
+  position: absolute;
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(100, 100, 100, 0.2) 0%, transparent 70%);
+  border-radius: 50%;
+  top: 15%;
+  left: 15%;
+}
+
+.moon-glow {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(200, 200, 150, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  top: -35px;
+  left: -35px;
+  animation: moonGlow 5s ease-in-out infinite reverse;
+}
+
+/* ============ DRIFTING CLOUDS ============ */
+.clouds-svg {
+  position: absolute;
+  width: 200%;
+  height: 50%;
+  top: 0;
+  left: -50%;
+  opacity: 0.85;
+}
+
+@keyframes driftCloud1 {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(600px); }
+}
+
+@keyframes driftCloud2 {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(500px); }
+}
+
+.cloud-1 {
+  animation: driftCloud1 45s linear infinite;
+}
+
+.cloud-2 {
+  animation: driftCloud2 55s linear infinite;
+  animation-delay: 10s;
+}
+
+/* ============ BUILDINGS WITH ANIMATED WINDOWS ============ */
+.buildings-svg {
+  position: absolute;
+  bottom: 130px;
+  left: 0;
+  width: 100%;
+  height: 70%;
+  opacity: 0.9;
+  z-index: 2;
+}
+
+@keyframes blink {
+  0%, 10%, 100% { fill: #1a1a1a; }
+  5% { fill: #ffff00; }
+}
+
+.window {
+  animation: blink 3s ease-in infinite;
+  transition: fill 0.2s ease;
+}
+
+/* ============ ANTENNA BEACON ============ */
+@keyframes antennaBeacon {
+  0%, 100% { 
+    fill: #ff0000;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+  }
+  50% {
+    fill: #ff3333;
+    box-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+  }
+}
+
+.antenna-light {
+  animation: antennaBeacon 1.5s ease-in-out infinite;
+}
+
+/* ============ FLYING AIRPLANE ============ */
+.airplane {
+  position: fixed;
+  top: 25%;
+  width: 100px;
+  height: 60px;
+  z-index: 5;
+  transition: left 0.05s linear;
+}
+
+@keyframes planeBlink {
+  0%, 100% { fill: #ff0000; }
+  50% { fill: #ff6666; }
+}
+
+.plane-light {
+  animation: planeBlink 0.6s ease-in-out infinite;
+}
+
+/* ============ WATER RIPPLES ============ */
+.water-ripples {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 15%;
+}
+
+@keyframes rippleMove1 {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(200px); }
+}
+
+@keyframes rippleMove2 {
+  0% { transform: translateX(-100px); }
+  100% { transform: translateX(100px); }
+}
+
+.ripple-1 {
+  animation: rippleMove1 6s linear infinite;
+}
+
+.ripple-2 {
+  animation: rippleMove2 8s linear infinite;
+  animation-delay: 2s;
+}
+
+/* ============ LOGIN BOX (ABOVE BACKGROUND) ============ */
 .login-box {
   background-color: white;
   padding: 32px 40px;
@@ -22,6 +248,7 @@
   backdrop-filter: blur(10px);
   position: relative;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  z-index: 10;
 }
 
 .login-box:hover {
@@ -150,4 +377,300 @@
 .login-button:active {
   transform: translateY(0);
   box-shadow: 0 4px 14px rgba(30, 107, 71, 0.3);
+}
+
+.login-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 480px) {
+  .login-box {
+    padding: 24px 20px;
+    max-width: 90%;
+  }
+
+  .login-title {
+    font-size: 24px;
+  }
+
+  .login-subtitle {
+    font-size: 13px;
+  }
+
+  .form-input,
+  .login-button {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+
+  .moon-container {
+    top: 5%;
+    right: 5%;
+  }
+
+  .moon,
+  .moon-glow,
+  .sun,
+  .sun-glow {
+    width: 60px;
+    height: 60px;
+  }
+
+  .moon-glow,
+  .sun-glow {
+    width: 120px;
+    height: 120px;
+    top: -30px;
+    left: -30px;
+  }
+}
+
+/* ============ DAY/NIGHT MODE ============ */
+
+/* Night Mode (Default) */
+.login-container.night-time {
+  background: #1e6b47;
+  transition: background 1s ease-in-out;
+}
+
+.login-container.night-time .aurora {
+  opacity: 1;
+  transition: opacity 1s ease-in-out;
+}
+
+.login-container.night-time .stars-container {
+  opacity: 1;
+  transition: opacity 1s ease-in-out;
+}
+
+.login-container.night-time .moon {
+  display: block;
+}
+
+.login-container.night-time .moon-glow {
+  display: block;
+}
+
+.login-container.night-time .sun {
+  display: none;
+}
+
+.login-container.night-time .sun-glow {
+  display: none;
+}
+
+.login-container.night-time .cloud {
+  opacity: 0.7;
+  transition: opacity 1s ease-in-out;
+}
+
+/* Day Mode */
+.login-container.day-time {
+  background: linear-gradient(180deg, #87ceeb 0%, #e0f6ff 100%);
+  transition: background 1s ease-in-out;
+}
+
+.login-container.day-time .aurora {
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.login-container.day-time .stars-container {
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.login-container.day-time .moon {
+  display: none;
+}
+
+.login-container.day-time .moon-glow {
+  display: none;
+}
+
+.login-container.day-time .sun {
+  display: block;
+}
+
+.login-container.day-time .sun-glow {
+  display: block;
+}
+
+.login-container.day-time .cloud {
+  opacity: 1;
+  transition: opacity 1s ease-in-out;
+}
+
+/* Sun Styling */
+@keyframes sunGlow {
+  0%, 100% {
+    box-shadow: 0 0 40px rgba(255, 200, 50, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(255, 200, 50, 0.8);
+  }
+}
+
+.sun {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle at 35% 35%, #ffff00, #ffa500);
+  border-radius: 50%;
+  box-shadow: 0 0 40px rgba(255, 200, 50, 0.6);
+  animation: sunGlow 3s ease-in-out infinite;
+  position: relative;
+}
+
+.sun-glow {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(255, 200, 50, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: sunGlow 3s ease-in-out infinite;
+}
+
+/* ============ ROAD & VEHICLES ============ */
+.road-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 160px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.3) 100%);
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.road-background {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  height: 70px;
+  background: #333;
+  border-top: 3px solid #666;
+  border-bottom: 2px solid #666;
+}
+
+.road-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.road-markings {
+  animation: roadScroll 3s linear infinite;
+}
+
+@keyframes roadScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(10%);
+  }
+}
+
+/* Vehicle Styling */
+.vehicle {
+  position: absolute;
+  bottom: 20px;
+}
+
+.vehicle-svg {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+  height: 65px;
+}
+
+/* Motorcycle is smaller than car */
+.motorcycle .vehicle-svg {
+  height: 40px;
+}
+
+/* Car Animation - Left to Right */
+.car {
+  animation: carDrive 14s linear infinite;
+}
+
+@keyframes carDrive {
+  0% {
+    left: -80px;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Car Animation - Right to Left (opposite direction) */
+@keyframes carDriveReverse {
+  0% {
+    right: -80px;
+  }
+  100% {
+    right: 100%;
+  }
+}
+
+.car {
+  animation: carDrive 14s linear infinite;
+}
+
+.car.reverse {
+  animation: carDriveReverse 14s linear infinite;
+  transform: scaleX(-1);
+}
+
+/* Motorcycle Animation - Right to Left */
+.motorcycle {
+  animation: motorcycleDrive 16s linear infinite;
+  animation-delay: 3s;
+  transform: scaleX(-1);
+}
+
+/* Motorcycle Animation - Left to Right */
+@keyframes motorcycleDriveReverse {
+  0% {
+    left: -60px;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.motorcycle.reverse {
+  animation: motorcycleDriveReverse 16s linear infinite;
+  transform: scaleX(1);
+}
+
+@keyframes motorcycleDrive {
+  0% {
+    right: -60px;
+  }
+  100% {
+    right: 100%;
+  }
+}
+
+/* Lane positioning */
+.lane-top {
+  bottom: 55px;
+}
+
+.lane-bottom {
+  bottom: 20px;
+}
+
+/* Day/Night Mode for Road */
+.login-container.day-time .road-container {
+  opacity: 0.75;
+}
+
+.login-container.night-time .road-container {
+  opacity: 0.6;
 }

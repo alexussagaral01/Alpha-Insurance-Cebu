@@ -191,36 +191,59 @@ const Records = () => {
         const username = localStorage.getItem('user');
         const adminId = localStorage.getItem('adminId');
         
-        // OPTIMIZED: Fetch all records in pages to avoid socket timeout
-        let allPolicies = [];
-        let page = 1;
-        let totalPages = 1;
+        // ⚡ OPTIMIZED: Fetch only first page to show data immediately (faster initial load)
+        const response = await fetch(`${apiUrl}/policies?page=1&limit=500`, {
+          headers: {
+            'x-username': username,
+            'x-admin-id': adminId
+          }
+        });
         
-        while (page <= totalPages) {
-          const response = await fetch(`${apiUrl}/policies?page=${page}&limit=500`, {
-            headers: {
-              'x-username': username,
-              'x-admin-id': adminId
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Failed to fetch policies: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          const transformedPolicies = (data.data || []).map(transformPolicy);
-          allPolicies = [...allPolicies, ...transformedPolicies];
-          
-          // Update total pages from pagination info
-          if (data.pagination) {
-            totalPages = data.pagination.pages;
-          }
-          
-          page++;
+        if (!response.ok) {
+          throw new Error(`Failed to fetch policies: ${response.statusText}`);
         }
+
+        const data = await response.json();
+        const transformedPolicies = (data.data || []).map(transformPolicy);
         
-        setUsers(allPolicies);
+        // Start with first page, then load remaining pages in background
+        setUsers(transformedPolicies);
+        
+        // If there are more pages, fetch them silently in background
+        if (data.pagination && data.pagination.pages > 1) {
+          let allPolicies = [...transformedPolicies];
+          
+          // Fetch remaining pages in parallel (not sequential)
+          const fetchRemainingPages = async () => {
+            const pagePromises = [];
+            for (let page = 2; page <= data.pagination.pages; page++) {
+              pagePromises.push(
+                fetch(`${apiUrl}/policies?page=${page}&limit=500`, {
+                  headers: {
+                    'x-username': username,
+                    'x-admin-id': adminId
+                  }
+                })
+                  .then(res => res.json())
+                  .catch(err => {
+                    console.error(`Error fetching page ${page}:`, err);
+                    return { data: [] };
+                  })
+              );
+            }
+            
+            const results = await Promise.all(pagePromises);
+            results.forEach(pageResult => {
+              if (pageResult.data) {
+                allPolicies = [...allPolicies, ...pageResult.data.map(transformPolicy)];
+              }
+            });
+            
+            setUsers(allPolicies);
+          };
+          
+          fetchRemainingPages();
+        }
       } catch (error) {
         console.error('Error fetching policies:', error);
       }
@@ -240,8 +263,8 @@ const Records = () => {
     // Fetch initial data (shows loading)
     fetchPoliciesInitial();
 
-    // Set up auto-refresh polling every 5 seconds (no loading popup)
-    const pollInterval = setInterval(fetchPoliciesQuiet, 5000);
+    // ⚡ OPTIMIZED: 15-second polling (balance between responsiveness and DB stress)
+    const pollInterval = setInterval(fetchPoliciesQuiet, 15000);
 
     // Cleanup function
     return () => {

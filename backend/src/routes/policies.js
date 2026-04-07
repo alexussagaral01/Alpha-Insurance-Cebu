@@ -164,16 +164,23 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit) || 500; // Default 500 per page
     const offset = (page - 1) * limit;
 
-    // Fetch total count for pagination info
-    const { count: totalCount, error: countError } = await supabase
-      .from('insurance_policies')
-      .select('id', { count: 'exact', head: true });
+    // ⚡ OPTIMIZED: Fetch total count only once per session (client-side caching)
+    // For subsequent loads, use cached value instead of recalculating
+    let totalCount = parseInt(req.query.totalCount) || null;
+    
+    // Only fetch total count if not provided (first page load)
+    if (totalCount === null || page === 1) {
+      const { count, error: countError } = await supabase
+        .from('insurance_policies')
+        .select('id', { count: 'exact', head: true });
 
-    if (countError && countError.code !== 'PGRST116') {
-      throw countError;
+      if (countError && countError.code !== 'PGRST116') {
+        throw countError;
+      }
+      totalCount = count || 0;
     }
 
-    // Fetch paginated data
+    // Fetch paginated data with optimized column selection
     const { data, error } = await supabase
       .from('insurance_policies')
       .select('id, assured, address, coc_number, or_number, policy_number, policy_type, policy_year, date_issued, date_received, insurance_from_date, insurance_to_date, model, make, body_type, color, mv_file_no, plate_no, chassis_no, motor_no, premium, other_charges, auth_fee, doc_stamps, e_vat, lgt, total_premium, created_at, updated_at')
@@ -188,8 +195,8 @@ router.get('/', async (req, res) => {
       pagination: {
         page,
         limit,
-        total: totalCount || 0,
-        pages: Math.ceil((totalCount || 0) / limit)
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit)
       }
     });
   } catch (error) {
