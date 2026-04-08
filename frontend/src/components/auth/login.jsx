@@ -446,7 +446,7 @@ function Login() {
           </div>
 
           {/* Additional Car 2 - Blue (bottom lane, right to left) */}
-          <div className="car vehicle lane-bottom reverse" style={{animationDelay: '5s'}}>
+          <div className="car vehicle lane-bottom reverse" style={{animationDelay: '5s', animationFillMode: 'both'}}>
             <svg viewBox="0 0 60 40" className="vehicle-svg">
               {/* Chassis */}
               <rect x="5" y="20" width="50" height="12" rx="2" fill="#3498db"/>
@@ -469,7 +469,7 @@ function Login() {
           </div>
 
           {/* Additional Motorcycle 2 - Green (top lane, left to right) */}
-          <div className="motorcycle vehicle lane-top reverse" style={{animationDelay: '8s'}}>
+          <div className="motorcycle vehicle lane-top reverse" style={{animationDelay: '8s', animationFillMode: 'both'}}>
             <svg viewBox="0 0 60 40" className="vehicle-svg">
               {/* Back Wheel */}
               <circle cx="8" cy="28" r="6" fill="#1a1a1a" stroke="#444" strokeWidth="1"/>
@@ -522,7 +522,7 @@ function Login() {
           </div>
 
           {/* Additional Car 3 - Orange (top lane, left to right) */}
-          <div className="car vehicle lane-top" style={{animationDelay: '10s'}}>
+          <div className="car vehicle lane-top" style={{animationDelay: '10s', animationFillMode: 'both'}}>
             <svg viewBox="0 0 60 40" className="vehicle-svg">
               {/* Chassis */}
               <rect x="5" y="20" width="50" height="12" rx="2" fill="#f39c12"/>

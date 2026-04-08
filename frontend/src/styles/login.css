@@ -596,11 +596,12 @@
 /* Car Animation - Left to Right */
 .car {
   animation: carDrive 14s linear infinite;
+  animation-fill-mode: both;
 }
 
 @keyframes carDrive {
   0% {
-    left: -80px;
+    left: -150px;
   }
   100% {
     left: 100%;
@@ -610,7 +611,7 @@
 /* Car Animation - Right to Left (opposite direction) */
 @keyframes carDriveReverse {
   0% {
-    right: -80px;
+    right: -150px;
   }
   100% {
     right: 100%;
@@ -619,10 +620,12 @@
 
 .car {
   animation: carDrive 14s linear infinite;
+  animation-fill-mode: both;
 }
 
 .car.reverse {
   animation: carDriveReverse 14s linear infinite;
+  animation-fill-mode: both;
   transform: scaleX(-1);
 }
 
@@ -630,13 +633,14 @@
 .motorcycle {
   animation: motorcycleDrive 16s linear infinite;
   animation-delay: 3s;
+  animation-fill-mode: both;
   transform: scaleX(-1);
 }
 
 /* Motorcycle Animation - Left to Right */
 @keyframes motorcycleDriveReverse {
   0% {
-    left: -60px;
+    left: -120px;
   }
   100% {
     left: 100%;
@@ -645,12 +649,13 @@
 
 .motorcycle.reverse {
   animation: motorcycleDriveReverse 16s linear infinite;
+  animation-fill-mode: both;
   transform: scaleX(1);
 }
 
 @keyframes motorcycleDrive {
   0% {
-    right: -60px;
+    right: -120px;
   }
   100% {
     right: 100%;

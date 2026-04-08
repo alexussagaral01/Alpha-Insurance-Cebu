@@ -495,7 +495,11 @@ const Records = () => {
 
   // Real-time calculation handler for edit
   const handleEditChange = (field, value) => {
-    const updated = { ...editData, [field]: value };
+    // Convert text fields to uppercase for consistency
+    const textFields = ['assuredName', 'address', 'policyNumber', 'cocNumber', 'orNumber', 'cType', 'year', 'model', 'make', 'bodyType', 'color', 'mvFileNo', 'plateNo', 'plate', 'serialChassisNo', 'chassisNo', 'motorNo'];
+    const finalValue = textFields.includes(field) ? value.toUpperCase() : value;
+    
+    const updated = { ...editData, [field]: finalValue };
     
     // Auto-calculate taxes when premium or other charges change
     if (field === 'premium' || field === 'otherCharges') {
